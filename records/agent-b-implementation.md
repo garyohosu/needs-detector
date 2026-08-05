@@ -74,6 +74,12 @@ All 27 tests pass, including E2E and Multi-interview E2E tests.
 Implemented fixes A-F and tested.
 All 28 tests pass.
 
+## 008 Cycle 2 実装・最終確認
+
+- Manual応答の`ai_completions`を`AICompletion`で検証。
+- CLIのエラー表示を具体化し、広すぎる例外捕捉を除去。
+- 29テストとwheel配布試験に成功。
+
 
 ## 008 Cycle 3 最終修正
 Fixed assertions in e2e tests and added accurate response values.

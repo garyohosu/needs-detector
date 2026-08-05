@@ -1,7 +1,9 @@
 import argparse
 import sys
 from pathlib import Path
-from needs_detector.core.services import ProjectService, DrawService, ExploreService, InterviewService, LearnService, ReportService
+from pydantic import ValidationError
+from needs_detector.core.services import ProjectService, DrawService, ExploreService, InterviewService, LearnService, ReportService, HumanGateError
+from needs_detector.domain.models.exceptions import MockFixtureNotFoundError, QuoteValidationError
 
 def main():
     parser = argparse.ArgumentParser(prog='needs-detector')
@@ -48,33 +50,39 @@ def main():
     # Pass the current working directory to services (assuming running in project dir unless init)
     project_dir = Path.cwd()
 
-    if args.command == 'init':
-        target_dir = Path(args.dir) / args.name
-        ProjectService.init_project(target_dir, args.name)
-        print(f"Initialized project {args.name} in {target_dir}")
-    elif args.command == 'add-idea':
-        ProjectService.add_idea(project_dir, args.file)
-    elif args.command == 'add-source':
-        ProjectService.add_source(project_dir, args.file)
-    elif args.command == 'draw':
-        DrawService.draw(project_dir, args.provider, args.fixture_key)
-    elif args.command == 'explore':
-        ExploreService.explore(project_dir, args.provider, args.fixture_key)
-    elif args.command == 'interview-guide':
-        InterviewService.generate_guide(project_dir, args.provider, args.fixture_key)
-    elif args.command == 'add-interview':
-        InterviewService.add_interview(project_dir, args.file)
-    elif args.command == 'learn':
-        LearnService.learn(project_dir, args.provider, args.fixture_key)
-    elif args.command == 'report':
-        ReportService.generate_report(project_dir)
-    elif args.command == 'status':
-        ProjectService.status(project_dir)
-    elif args.command == 'import-llm-response':
-        from needs_detector.core.services import ImportService
-        ImportService.import_response(project_dir, args.file)
-    else:
-        parser.print_help()
+    try:
+        if args.command == 'init':
+            target_dir = Path(args.dir) / args.name
+            ProjectService.init_project(target_dir, args.name)
+            print(f"Initialized project {args.name} in {target_dir}")
+        elif args.command == 'add-idea':
+            ProjectService.add_idea(project_dir, args.file)
+        elif args.command == 'add-source':
+            ProjectService.add_source(project_dir, args.file)
+        elif args.command == 'draw':
+            DrawService.draw(project_dir, args.provider, args.fixture_key)
+        elif args.command == 'explore':
+            ExploreService.explore(project_dir, args.provider, args.fixture_key)
+        elif args.command == 'interview-guide':
+            InterviewService.generate_guide(project_dir, args.provider, args.fixture_key)
+        elif args.command == 'add-interview':
+            InterviewService.add_interview(project_dir, args.file)
+        elif args.command == 'learn':
+            LearnService.learn(project_dir, args.provider, args.fixture_key)
+        elif args.command == 'report':
+            ReportService.generate_report(project_dir)
+        elif args.command == 'status':
+            ProjectService.status(project_dir)
+        elif args.command == 'import-llm-response':
+            from needs_detector.core.services import ImportService
+            ImportService.import_response(project_dir, args.file)
+        else:
+            parser.print_help()
+    except (ValueError, TypeError, OSError, ValidationError, HumanGateError,
+            MockFixtureNotFoundError, QuoteValidationError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    return 0
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

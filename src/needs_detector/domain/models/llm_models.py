@@ -1,6 +1,12 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Literal, Optional
 
+class AICompletion(BaseModel):
+    content: str
+    related_artifact: Optional[str] = None
+    step: Optional[str] = None
+    job_id: Optional[str] = None
+
 class Jobs(BaseModel):
     functional: str
     emotional: str
@@ -20,6 +26,7 @@ class Persona(BaseModel):
 
 class DrawResponse(BaseModel):
     personas: List[Persona]
+    ai_completions: List[AICompletion] = Field(default_factory=list)
 
 class Alternative(BaseModel):
     name: str
@@ -31,10 +38,12 @@ class ExploreResponse(BaseModel):
     direct_competition: List[Alternative]
     indirect_alternatives: List[Alternative]
     non_consumption: List[Alternative]
+    ai_completions: List[AICompletion] = Field(default_factory=list)
 
 class InterviewGuideResponse(BaseModel):
     core_questions: List[str]
     deep_dive_questions: List[str]
+    ai_completions: List[AICompletion] = Field(default_factory=list)
 
 class CPFEvidence(BaseModel):
     evidence_type: Literal['evidence', 'quote', 'hypothesis', 'inference', 'unknown']
@@ -70,3 +79,4 @@ class CPFEvidenceStructure(BaseModel):
 class InterviewAnalysisResponse(BaseModel):
     refutations: List[Refutation]
     cpf_evidence: Optional[CPFEvidenceStructure] = None
+    ai_completions: List[AICompletion] = Field(default_factory=list)
