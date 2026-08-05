@@ -1,0 +1,44 @@
+content: '# Public Issue Observation: 複数AI・サブエージェント間の状態共有
+
+
+  - Data classification: unknown
+
+  - Sources: anthropics/claude-code#68619, #83412; openai/codex#32017; google-gemini/gemini-cli#17758
+
+  - Observations: subagentの中間作業が失われる、親子taskの要約handoffが欲しい、subagentを再起動後も再開したいという報告・要望がある。
+
+  - Direct quotes: “all intermediate work from every agent in the tree is lost.” /
+  “Ensure work isn''t lost on restart”
+
+  - Interpretation: 複数agent間で検証済み事実・未完了task・権限を明示的に受け渡す状態形式が有望。
+
+  - Unknown: handoff対象の最小スキーマ、導入負担、顧客の支払意思。
+
+  '
+cpf_evidence:
+  current_alternative:
+    alternatives_used:
+    - --resume、continue、再実行、手動要約、ログ・git差分探索
+    continued_use_reason:
+    - unknown
+    dissatisfaction:
+    - 手作業で状態を探す、または再実行する負担が報告・要望された
+  first_mover:
+    attempts:
+    - Issue本文に記録された回避策はあるが、購入・導入行動ではない
+    money_spent:
+    - unknown
+    time_spent:
+    - unknown
+  real_problem:
+    concrete_events:
+    - handoffとsubagent永続化のIssue観察がある。実顧客事実ではない。
+    frequency:
+    - 'unknown: 公開Issue件数は顧客頻度ではない'
+    impact:
+    - 'unknown: 実顧客の作業損失時間は未確認'
+data_classification: unknown
+refutations: []
+source_file: interviews/raw/input-observation-04-handoff.md
+source_sha256: 2d148a374c7711e090880ece70d3c80f33a35acdf3d951abace657ec485605b4
+target: input-observation-04-handoff

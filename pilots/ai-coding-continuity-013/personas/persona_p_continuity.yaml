@@ -1,0 +1,18 @@
+ai_completions: []
+current_coping: --resumeやcontinueを試し、ログ、transcript、git差分、手動要約、checkpointを探す
+dissatisfaction: 何が保存され、どこから再開できるかが一貫せず、失敗時に再実行範囲が分からない
+evidence_type: hypothesis
+id: p_continuity
+impediments: session固有の履歴、圧縮、利用量制限、subagent境界、CLIごとの状態形式
+jobs:
+  emotional: 作業を失った不安や再実行の徒労を減らす
+  functional: 目的、判断、途中成果物、未完了taskを次のsessionやCLIへ安全に引き継ぐ
+  social: 小規模チームに進捗と判断根拠を説明できる
+name: 複数CLIを使う個人開発者
+questions_to_verify:
+- 直近に作業を失った具体的な出来事は何か
+- 復旧のために実際にどのファイルやコマンドを使ったか
+- 再実行した作業と所要時間はどれくらいか
+- 複数CLIへ何を手動で渡したか
+situation: 利用量制限、再起動、圧縮、または別CLIへの引継ぎをまたいで長時間の開発taskを続ける場面
+source_reference: evidence-register.md（公開Issueの観察。顧客事実ではない）

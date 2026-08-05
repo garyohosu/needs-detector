@@ -1,0 +1,7 @@
+{
+  "job_id": "79a649ae-4a0a-4f0d-bae8-2d0e0a9210d6",
+  "prompt_used": "learn_interview",
+  "target": "interview_input-observation-05-progress",
+  "context": "Target:interview_input-observation-05-progress\nContent:# Public Issue Observation: 長時間タスクの進捗・チェックポイント\n\n- Data classification: unknown\n- Sources: openai/codex#32001, #35801; google-gemini/gemini-cli#22323, #28036\n- Observations: 中間進捗が見えない、MAX_TURNSがsuccessとして返る、resume後に途中停止してcontinue入力が必要という事例がある。\n- Direct quotes: “it executes for a long time internally and only presents the final result” / “Entering `continue` resumes the same task temporarily”\n- Interpretation: 状態を表示し、未完了・制限到達・再開可能を区別するcheckpoint UIが必要な可能性。\n- Unknown: どの状態表示が復旧判断に有効か、作業損失の大きさ。\n",
+  "instructions": "Return JSON with content and ai_completions."
+}

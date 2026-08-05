@@ -1,0 +1,44 @@
+content: '# Public Issue Observation: コンテキスト圧縮と情報欠落
+
+
+  - Data classification: unknown
+
+  - Sources: anthropics/claude-code#73366; openai/codex#34656; google-gemini/gemini-cli#21792
+
+  - Observations: 誤った圧縮要求、compaction summaryのcross-tool import、長期sessionのcontext degradationが報告・提案された。#21792はclosed。
+
+  - Direct quotes: “I am using 0% context but it says that I must compact.” / “Long-running
+  sessions often suffer from context degradation”
+
+  - Interpretation: 圧縮を単なる履歴短縮ではなく、状態・制約を保つ変換にする必要がある可能性。
+
+  - Unknown: 現行版での解決範囲、頻度、顧客価値。
+
+  '
+cpf_evidence:
+  current_alternative:
+    alternatives_used:
+    - --resume、continue、再実行、手動要約、ログ・git差分探索
+    continued_use_reason:
+    - unknown
+    dissatisfaction:
+    - 手作業で状態を探す、または再実行する負担が報告・要望された
+  first_mover:
+    attempts:
+    - Issue本文に記録された回避策はあるが、購入・導入行動ではない
+    money_spent:
+    - unknown
+    time_spent:
+    - unknown
+  real_problem:
+    concrete_events:
+    - 圧縮とcross-tool importのIssue観察がある。closed Issueの現行影響はunknown。
+    frequency:
+    - 'unknown: 公開Issue件数は顧客頻度ではない'
+    impact:
+    - 'unknown: 実顧客の作業損失時間は未確認'
+data_classification: unknown
+refutations: []
+source_file: interviews/raw/input-observation-02-compaction.md
+source_sha256: d7424df7704bb2db4b8d9959d89cbd08eaf233a18ab2fd2aae7cf74fcdb384c6
+target: input-observation-02-compaction

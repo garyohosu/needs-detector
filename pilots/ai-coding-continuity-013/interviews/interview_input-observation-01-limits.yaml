@@ -1,0 +1,44 @@
+content: '# Public Issue Observation: セッション・利用量制限
+
+
+  - Data classification: unknown
+
+  - Sources: anthropics/claude-code#79958, #83412; openai/codex#31205
+
+  - Observations: 利用量やspend limitで長い処理が中断され、途中結果が親へ戻らず、リセット後に再実行される事例が報告された。
+
+  - Direct quotes: “No partial output or state is returned to the orchestrating session.”
+  / “usage limits currently interrupt active coding work”
+
+  - Interpretation: 途中成果物の保存とreset後の再開が有望な問題仮説。
+
+  - Unknown: 発生頻度、典型的損失時間、支払意思、実顧客であること。
+
+  '
+cpf_evidence:
+  current_alternative:
+    alternatives_used:
+    - --resume、continue、再実行、手動要約、ログ・git差分探索
+    continued_use_reason:
+    - unknown
+    dissatisfaction:
+    - 手作業で状態を探す、または再実行する負担が報告・要望された
+  first_mover:
+    attempts:
+    - Issue本文に記録された回避策はあるが、購入・導入行動ではない
+    money_spent:
+    - unknown
+    time_spent:
+    - unknown
+  real_problem:
+    concrete_events:
+    - 利用量制限で再実行が起きるIssue観察がある。token損失の一般化はしない。
+    frequency:
+    - 'unknown: 公開Issue件数は顧客頻度ではない'
+    impact:
+    - 'unknown: 実顧客の作業損失時間は未確認'
+data_classification: unknown
+refutations: []
+source_file: interviews/raw/input-observation-01-limits.md
+source_sha256: 4e1ff229982527e41c8ee796f87d84903e37383a959a750557bb9821e2c4943f
+target: input-observation-01-limits

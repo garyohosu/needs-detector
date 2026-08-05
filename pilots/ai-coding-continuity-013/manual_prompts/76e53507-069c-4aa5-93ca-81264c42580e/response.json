@@ -1,0 +1,49 @@
+{
+  "job_id": "76e53507-069c-4aa5-93ca-81264c42580e",
+  "prompt_used": "learn_interview",
+  "target": "interview_input-observation-06-workarounds",
+  "content": {
+    "refutations": [],
+    "cpf_evidence": {
+      "real_problem": {
+        "concrete_events": [
+          "closed Issueがあり既存checkpoint機能の可能性がある。未解決性はunknown。"
+        ],
+        "frequency": [
+          "unknown: 公開Issue件数は顧客頻度ではない"
+        ],
+        "impact": [
+          "unknown: 実顧客の作業損失時間は未確認"
+        ]
+      },
+      "first_mover": {
+        "time_spent": [
+          "unknown"
+        ],
+        "money_spent": [
+          "unknown"
+        ],
+        "attempts": [
+          "Issue本文に記録された回避策はあるが、購入・導入行動ではない"
+        ]
+      },
+      "current_alternative": {
+        "alternatives_used": [
+          "--resume、continue、再実行、手動要約、ログ・git差分探索"
+        ],
+        "dissatisfaction": [
+          "手作業で状態を探す、または再実行する負担が報告・要望された"
+        ],
+        "continued_use_reason": [
+          "unknown"
+        ]
+      }
+    },
+    "ai_completions": [
+      {
+        "content": "この記録は公開Issueをunknownとして扱った観察であり、CPF、頻度、支払意思を補完していない。",
+        "related_artifact": "interviews/raw/input-observation-06-workarounds.md"
+      }
+    ]
+  }
+}

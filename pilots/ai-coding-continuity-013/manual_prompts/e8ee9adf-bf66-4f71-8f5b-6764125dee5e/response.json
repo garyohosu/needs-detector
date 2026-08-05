@@ -1,0 +1,49 @@
+{
+  "job_id": "e8ee9adf-bf66-4f71-8f5b-6764125dee5e",
+  "prompt_used": "learn_interview",
+  "target": "interview_input-observation-02-compaction",
+  "content": {
+    "refutations": [],
+    "cpf_evidence": {
+      "real_problem": {
+        "concrete_events": [
+          "圧縮とcross-tool importのIssue観察がある。closed Issueの現行影響はunknown。"
+        ],
+        "frequency": [
+          "unknown: 公開Issue件数は顧客頻度ではない"
+        ],
+        "impact": [
+          "unknown: 実顧客の作業損失時間は未確認"
+        ]
+      },
+      "first_mover": {
+        "time_spent": [
+          "unknown"
+        ],
+        "money_spent": [
+          "unknown"
+        ],
+        "attempts": [
+          "Issue本文に記録された回避策はあるが、購入・導入行動ではない"
+        ]
+      },
+      "current_alternative": {
+        "alternatives_used": [
+          "--resume、continue、再実行、手動要約、ログ・git差分探索"
+        ],
+        "dissatisfaction": [
+          "手作業で状態を探す、または再実行する負担が報告・要望された"
+        ],
+        "continued_use_reason": [
+          "unknown"
+        ]
+      }
+    },
+    "ai_completions": [
+      {
+        "content": "この記録は公開Issueをunknownとして扱った観察であり、CPF、頻度、支払意思を補完していない。",
+        "related_artifact": "interviews/raw/input-observation-02-compaction.md"
+      }
+    ]
+  }
+}

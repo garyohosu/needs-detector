@@ -1,0 +1,44 @@
+content: '# Public Issue Observation: 手作業の回避策と反証
+
+
+  - Data classification: unknown
+
+  - Sources: google-gemini/gemini-cli#3882, #21792, #22705; google-gemini/gemini-cli#28036
+
+  - Observations: chat history保存、context改善、checkpointingはIssueや設計として既に扱われ、一部Issueはclosed。一方、resume後にcontinueを手入力する回避策も報告された。
+
+  - Direct quotes: “Use checkpointing for versioning and restoring” / “Entering `continue`
+  resumes the same task temporarily”
+
+  - Interpretation: 問題全体が未解決とは限らず、既存機能との差分と未充足部分を顧客に確認する必要がある。
+
+  - Unknown: closed Issueの実装効果、現行ユーザーの不満、再発率。
+
+  '
+cpf_evidence:
+  current_alternative:
+    alternatives_used:
+    - --resume、continue、再実行、手動要約、ログ・git差分探索
+    continued_use_reason:
+    - unknown
+    dissatisfaction:
+    - 手作業で状態を探す、または再実行する負担が報告・要望された
+  first_mover:
+    attempts:
+    - Issue本文に記録された回避策はあるが、購入・導入行動ではない
+    money_spent:
+    - unknown
+    time_spent:
+    - unknown
+  real_problem:
+    concrete_events:
+    - closed Issueがあり既存checkpoint機能の可能性がある。未解決性はunknown。
+    frequency:
+    - 'unknown: 公開Issue件数は顧客頻度ではない'
+    impact:
+    - 'unknown: 実顧客の作業損失時間は未確認'
+data_classification: unknown
+refutations: []
+source_file: interviews/raw/input-observation-06-workarounds.md
+source_sha256: e3bfa5070ac07202751bc0eafce18c062e16161c34c67bd9048097c7e7d56edf
+target: input-observation-06-workarounds

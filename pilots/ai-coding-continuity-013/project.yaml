@@ -1,0 +1,9 @@
+data_classification: unknown
+human_gate_enabled: true
+id: proj_001
+name: ai-coding-continuity-013
+status:
+  step1_draw: completed
+  step2_explore: completed
+  step3_listen: completed
+  step4_learn: completed

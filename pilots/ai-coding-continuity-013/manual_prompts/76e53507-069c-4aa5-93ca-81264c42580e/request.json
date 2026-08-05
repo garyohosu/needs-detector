@@ -1,0 +1,7 @@
+{
+  "job_id": "76e53507-069c-4aa5-93ca-81264c42580e",
+  "prompt_used": "learn_interview",
+  "target": "interview_input-observation-06-workarounds",
+  "context": "Target:interview_input-observation-06-workarounds\nContent:# Public Issue Observation: 手作業の回避策と反証\n\n- Data classification: unknown\n- Sources: google-gemini/gemini-cli#3882, #21792, #22705; google-gemini/gemini-cli#28036\n- Observations: chat history保存、context改善、checkpointingはIssueや設計として既に扱われ、一部Issueはclosed。一方、resume後にcontinueを手入力する回避策も報告された。\n- Direct quotes: “Use checkpointing for versioning and restoring” / “Entering `continue` resumes the same task temporarily”\n- Interpretation: 問題全体が未解決とは限らず、既存機能との差分と未充足部分を顧客に確認する必要がある。\n- Unknown: closed Issueの実装効果、現行ユーザーの不満、再発率。\n",
+  "instructions": "Return JSON with content and ai_completions."
+}

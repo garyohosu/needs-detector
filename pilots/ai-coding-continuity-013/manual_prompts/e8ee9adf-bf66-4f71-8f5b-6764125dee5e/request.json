@@ -1,0 +1,7 @@
+{
+  "job_id": "e8ee9adf-bf66-4f71-8f5b-6764125dee5e",
+  "prompt_used": "learn_interview",
+  "target": "interview_input-observation-02-compaction",
+  "context": "Target:interview_input-observation-02-compaction\nContent:# Public Issue Observation: コンテキスト圧縮と情報欠落\n\n- Data classification: unknown\n- Sources: anthropics/claude-code#73366; openai/codex#34656; google-gemini/gemini-cli#21792\n- Observations: 誤った圧縮要求、compaction summaryのcross-tool import、長期sessionのcontext degradationが報告・提案された。#21792はclosed。\n- Direct quotes: “I am using 0% context but it says that I must compact.” / “Long-running sessions often suffer from context degradation”\n- Interpretation: 圧縮を単なる履歴短縮ではなく、状態・制約を保つ変換にする必要がある可能性。\n- Unknown: 現行版での解決範囲、頻度、顧客価値。\n",
+  "instructions": "Return JSON with content and ai_completions."
+}

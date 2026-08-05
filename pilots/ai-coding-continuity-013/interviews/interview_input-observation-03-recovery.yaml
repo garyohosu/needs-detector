@@ -1,0 +1,44 @@
+content: '# Public Issue Observation: クラッシュ・再起動後の復旧
+
+
+  - Data classification: unknown
+
+  - Sources: openai/codex#19037, #35801; google-gemini/gemini-cli#27180, #27368
+
+  - Observations: shutdown、renderer reload、resume後の索引処理でsessionが失われたり、空会話・chat listからの消失になった事例が報告された。
+
+  - Direct quotes: “A long-running Codex CLI session was lost and cannot be resumed.”
+  / “the chat is lost forever”
+
+  - Interpretation: transcript本体だけでなくsession参照とcheckpointの復旧が必要な可能性。
+
+  - Unknown: 端末種別ごとの差、復旧率、現行版での解決。
+
+  '
+cpf_evidence:
+  current_alternative:
+    alternatives_used:
+    - --resume、continue、再実行、手動要約、ログ・git差分探索
+    continued_use_reason:
+    - unknown
+    dissatisfaction:
+    - 手作業で状態を探す、または再実行する負担が報告・要望された
+  first_mover:
+    attempts:
+    - Issue本文に記録された回避策はあるが、購入・導入行動ではない
+    money_spent:
+    - unknown
+    time_spent:
+    - unknown
+  real_problem:
+    concrete_events:
+    - shutdownやresumeでsession参照を失うIssue観察がある。復旧率はunknown。
+    frequency:
+    - 'unknown: 公開Issue件数は顧客頻度ではない'
+    impact:
+    - 'unknown: 実顧客の作業損失時間は未確認'
+data_classification: unknown
+refutations: []
+source_file: interviews/raw/input-observation-03-recovery.md
+source_sha256: 28ecad714b6b25b90b7d3a630ed3e4a72e92d4db2542d78949dcbae3465b9526
+target: input-observation-03-recovery

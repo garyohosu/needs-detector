@@ -1,0 +1,36 @@
+{
+  "job_id": "ef20a784-9b47-4957-a2a7-8b024018c50c",
+  "prompt_used": "draw_persona",
+  "target": null,
+  "content": {
+    "personas": [
+      {
+        "id": "p_continuity",
+        "name": "複数CLIを使う個人開発者",
+        "situation": "利用量制限、再起動、圧縮、または別CLIへの引継ぎをまたいで長時間の開発taskを続ける場面",
+        "jobs": {
+          "functional": "目的、判断、途中成果物、未完了taskを次のsessionやCLIへ安全に引き継ぐ",
+          "emotional": "作業を失った不安や再実行の徒労を減らす",
+          "social": "小規模チームに進捗と判断根拠を説明できる"
+        },
+        "impediments": "session固有の履歴、圧縮、利用量制限、subagent境界、CLIごとの状態形式",
+        "current_coping": "--resumeやcontinueを試し、ログ、transcript、git差分、手動要約、checkpointを探す",
+        "dissatisfaction": "何が保存され、どこから再開できるかが一貫せず、失敗時に再実行範囲が分からない",
+        "questions_to_verify": [
+          "直近に作業を失った具体的な出来事は何か",
+          "復旧のために実際にどのファイルやコマンドを使ったか",
+          "再実行した作業と所要時間はどれくらいか",
+          "複数CLIへ何を手動で渡したか"
+        ],
+        "evidence_type": "hypothesis",
+        "source_reference": "evidence-register.md（公開Issueの観察。顧客事実ではない）"
+      }
+    ],
+    "ai_completions": [
+      {
+        "content": "Issue横断から作った仮説であり、実顧客の人物像・頻度・支払意思を補完していない。",
+        "related_artifact": "personas/persona_p_continuity.yaml"
+      }
+    ]
+  }
+}

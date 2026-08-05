@@ -1,0 +1,49 @@
+{
+  "job_id": "a4b3b143-97dc-4ab4-bf05-d61eca8c86f2",
+  "prompt_used": "learn_interview",
+  "target": "interview_input-observation-01-limits",
+  "content": {
+    "refutations": [],
+    "cpf_evidence": {
+      "real_problem": {
+        "concrete_events": [
+          "利用量制限で再実行が起きるIssue観察がある。token損失の一般化はしない。"
+        ],
+        "frequency": [
+          "unknown: 公開Issue件数は顧客頻度ではない"
+        ],
+        "impact": [
+          "unknown: 実顧客の作業損失時間は未確認"
+        ]
+      },
+      "first_mover": {
+        "time_spent": [
+          "unknown"
+        ],
+        "money_spent": [
+          "unknown"
+        ],
+        "attempts": [
+          "Issue本文に記録された回避策はあるが、購入・導入行動ではない"
+        ]
+      },
+      "current_alternative": {
+        "alternatives_used": [
+          "--resume、continue、再実行、手動要約、ログ・git差分探索"
+        ],
+        "dissatisfaction": [
+          "手作業で状態を探す、または再実行する負担が報告・要望された"
+        ],
+        "continued_use_reason": [
+          "unknown"
+        ]
+      }
+    },
+    "ai_completions": [
+      {
+        "content": "この記録は公開Issueをunknownとして扱った観察であり、CPF、頻度、支払意思を補完していない。",
+        "related_artifact": "interviews/raw/input-observation-01-limits.md"
+      }
+    ]
+  }
+}

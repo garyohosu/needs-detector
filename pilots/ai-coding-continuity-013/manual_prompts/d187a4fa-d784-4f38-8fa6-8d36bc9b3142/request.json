@@ -1,0 +1,7 @@
+{
+  "job_id": "d187a4fa-d784-4f38-8fa6-8d36bc9b3142",
+  "prompt_used": "learn_interview",
+  "target": "interview_input-observation-03-recovery",
+  "context": "Target:interview_input-observation-03-recovery\nContent:# Public Issue Observation: クラッシュ・再起動後の復旧\n\n- Data classification: unknown\n- Sources: openai/codex#19037, #35801; google-gemini/gemini-cli#27180, #27368\n- Observations: shutdown、renderer reload、resume後の索引処理でsessionが失われたり、空会話・chat listからの消失になった事例が報告された。\n- Direct quotes: “A long-running Codex CLI session was lost and cannot be resumed.” / “the chat is lost forever”\n- Interpretation: transcript本体だけでなくsession参照とcheckpointの復旧が必要な可能性。\n- Unknown: 端末種別ごとの差、復旧率、現行版での解決。\n",
+  "instructions": "Return JSON with content and ai_completions."
+}

@@ -1,0 +1,22 @@
+ai_completions:
+- content: 公開Issueから整理した代替策であり、利用者の支払意思や市場規模は推定していない。
+  related_artifact: alternatives/alternatives.yaml
+direct_competition:
+- benefits: 既存CLI内で再開できる
+  cost_time: unknown
+  name: CLI内蔵のresume・session履歴
+  problems: CLIごとに形式と保存境界が異なり、状態参照が失われる事例がある
+indirect_alternatives:
+- benefits: CLIをまたいで人間が読める
+  cost_time: unknown
+  name: 手動のMarkdown、plan、git差分、checkpoint
+  problems: 更新漏れと要約の陳腐化、手作業の負担
+- benefits: 残存する原文を探せる
+  cost_time: unknown
+  name: ログ・transcript・チャット履歴の手動探索
+  problems: sessionIDや索引が失われると見つけにくい
+non_consumption:
+- benefits: 追加ツールなし
+  cost_time: unknown
+  name: 作業を再実行し、同じpromptを再入力する
+  problems: 途中成果物を失い、利用量と時間を再消費する

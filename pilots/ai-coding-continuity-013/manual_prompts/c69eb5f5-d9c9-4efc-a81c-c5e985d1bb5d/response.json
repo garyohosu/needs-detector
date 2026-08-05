@@ -1,0 +1,43 @@
+{
+  "job_id": "c69eb5f5-d9c9-4efc-a81c-c5e985d1bb5d",
+  "prompt_used": "explore_alternatives",
+  "target": null,
+  "content": {
+    "direct_competition": [
+      {
+        "name": "CLI内蔵のresume・session履歴",
+        "benefits": "既存CLI内で再開できる",
+        "problems": "CLIごとに形式と保存境界が異なり、状態参照が失われる事例がある",
+        "cost_time": "unknown"
+      }
+    ],
+    "indirect_alternatives": [
+      {
+        "name": "手動のMarkdown、plan、git差分、checkpoint",
+        "benefits": "CLIをまたいで人間が読める",
+        "problems": "更新漏れと要約の陳腐化、手作業の負担",
+        "cost_time": "unknown"
+      },
+      {
+        "name": "ログ・transcript・チャット履歴の手動探索",
+        "benefits": "残存する原文を探せる",
+        "problems": "sessionIDや索引が失われると見つけにくい",
+        "cost_time": "unknown"
+      }
+    ],
+    "non_consumption": [
+      {
+        "name": "作業を再実行し、同じpromptを再入力する",
+        "benefits": "追加ツールなし",
+        "problems": "途中成果物を失い、利用量と時間を再消費する",
+        "cost_time": "unknown"
+      }
+    ],
+    "ai_completions": [
+      {
+        "content": "公開Issueから整理した代替策であり、利用者の支払意思や市場規模は推定していない。",
+        "related_artifact": "alternatives/alternatives.yaml"
+      }
+    ]
+  }
+}

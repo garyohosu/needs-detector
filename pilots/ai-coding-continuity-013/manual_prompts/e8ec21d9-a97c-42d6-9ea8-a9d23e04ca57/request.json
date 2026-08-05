@@ -1,0 +1,7 @@
+{
+  "job_id": "e8ec21d9-a97c-42d6-9ea8-a9d23e04ca57",
+  "prompt_used": "interview_guide",
+  "target": null,
+  "context": "Generate questions",
+  "instructions": "Return JSON with content and ai_completions."
+}
