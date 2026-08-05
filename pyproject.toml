@@ -7,7 +7,7 @@ name = "needs-detector"
 version = "0.1.0"
 description = "CLI tool for continuous needs validation"
 authors = [
-    { name = "Hantani", email = "hantani@example.com" }
+    { name = "Hantani" }
 ]
 readme = "README.md"
 requires-python = ">=3.12"

@@ -34,6 +34,9 @@ def main():
     report_parser = subparsers.add_parser('report')
 
     status_parser = subparsers.add_parser('status')
+    
+    import_parser = subparsers.add_parser('import-llm-response')
+    import_parser.add_argument('file')
 
     args = parser.parse_args()
 
@@ -62,6 +65,9 @@ def main():
         ReportService.generate_report(project_dir)
     elif args.command == 'status':
         ProjectService.status(project_dir)
+    elif args.command == 'import-llm-response':
+        from needs_detector.core.services import ImportService
+        ImportService.import_response(project_dir, args.file)
     else:
         parser.print_help()
 

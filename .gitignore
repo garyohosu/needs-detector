@@ -39,3 +39,9 @@ htmlcov/
 # Customer data
 secrets/
 *.jsonl
+
+sources/
+interviews/
+reports/
+personas/
+alternatives/

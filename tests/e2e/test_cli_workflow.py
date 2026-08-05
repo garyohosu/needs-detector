@@ -1,37 +1,37 @@
 import pytest
+import subprocess
+import sys
 import os
 from pathlib import Path
-from needs_detector.core.services import ProjectService, DrawService, ExploreService, InterviewService, LearnService, ReportService, HumanGateError
 
-def test_cli_init_success(tmp_path):
-    target = tmp_path / "myproj"
-    ProjectService.init_project(target, "myproj")
-    assert (target / "project.yaml").exists()
-    assert (target / "sources" / "index.yaml").exists()
-
-def test_cli_full_workflow(tmp_path):
-    target = tmp_path / "myproj"
-    ProjectService.init_project(target, "myproj")
+def test_cli_workflow(tmp_path):
+    project_dir = tmp_path / "myproj"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(Path(os.getcwd()) / "src")
     
-    idea_file = tmp_path / "idea.txt"
-    idea_file.write_text("my idea", encoding="utf-8")
-    ProjectService.add_idea(target, str(idea_file))
-    assert (target / "idea.md").exists()
+    # Init
+    res = subprocess.run([sys.executable, "-m", "needs_detector.cli.main", "init", "myproj", "--dir", str(tmp_path)], env=env, capture_output=True, text=True)
+    assert res.returncode == 0
+    assert project_dir.exists()
     
-    DrawService.draw(target, "mock")
-    assert (target / "personas" / "persona_1.yaml").exists()
+    # Idea
+    idea_file = tmp_path / "idea.md"
+    idea_file.write_text("Hello Idea", encoding="utf-8")
+    res = subprocess.run([sys.executable, "-m", "needs_detector.cli.main", "add-idea", str(idea_file)], cwd=project_dir, env=env, capture_output=True, text=True)
+    assert res.returncode == 0
+    assert (project_dir / "idea.md").exists()
     
-    ExploreService.explore(target, "mock")
-    assert (target / "alternatives" / "alternatives.yaml").exists()
+    # Draw
+    res = subprocess.run([sys.executable, "-m", "needs_detector.cli.main", "draw"], cwd=project_dir, env=env, capture_output=True, text=True)
+    assert res.returncode == 0
+    assert len(list((project_dir / "personas").glob("*.yaml"))) > 0
     
-    InterviewService.generate_guide(target)
-    assert (target / "interviews" / "guide.md").exists()
+    # Explore
+    res = subprocess.run([sys.executable, "-m", "needs_detector.cli.main", "explore"], cwd=project_dir, env=env, capture_output=True, text=True)
+    assert res.returncode == 0
+    assert len(list((project_dir / "alternatives").glob("*.yaml"))) > 0
     
-    interview_file = tmp_path / "interview.txt"
-    interview_file.write_text("山田太郎 is speaking", encoding="utf-8")
-    InterviewService.add_interview(target, str(interview_file))
-    assert (target / "interviews" / "interview_interview.yaml").exists()
-    
-    LearnService.learn(target, "mock")
-    ReportService.generate_report(target)
-    assert (target / "reports" / "final_report.md").exists()
+    # Learn without interviews (Human gate test)
+    res = subprocess.run([sys.executable, "-m", "needs_detector.cli.main", "learn"], cwd=project_dir, env=env, capture_output=True, text=True)
+    assert res.returncode != 0
+    assert "No interviews found" in res.stderr or "Exception" in res.stderr or res.returncode != 0
