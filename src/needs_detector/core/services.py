@@ -1,6 +1,7 @@
 import hashlib
 import json
 import shutil
+import json as json_module
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -88,6 +89,38 @@ def _validate_ai_completions(completions):
     return completions
 
 
+def _data_classification(project_dir: Path):
+    classes = []
+    for path in sorted((project_dir / 'interviews').glob('interview_*.yaml')):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                value = (yaml.safe_load(f) or {}).get('data_classification', 'unknown')
+        except (OSError, yaml.YAMLError):
+            value = 'unknown'
+        classes.append(value if value in {'real', 'synthetic'} else 'unknown')
+    if 'real' in classes:
+        return 'real'
+    if classes and all(value == 'synthetic' for value in classes):
+        return 'synthetic'
+    project_file = project_dir / 'project.yaml'
+    if project_file.exists():
+        with open(project_file, 'r', encoding='utf-8') as f:
+            configured = (yaml.safe_load(f) or {}).get('data_classification', 'unknown')
+        if configured in {'real', 'synthetic'}:
+            return configured
+    return 'unknown'
+
+
+def _mark_mock_demo(project_dir: Path):
+    path = project_dir / 'project.yaml'
+    with open(path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f) or {}
+    if data.get('data_classification', 'unknown') == 'unknown' and not list((project_dir / 'interviews').glob('interview_*.yaml')):
+        data['data_classification'] = 'synthetic'
+        with open(path, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(data, f, allow_unicode=True)
+
+
 class ProjectService:
     @staticmethod
     def init_project(target_dir: Path, name: str):
@@ -98,7 +131,7 @@ class ProjectService:
         data = {'id': 'proj_001', 'name': name, 'status': {
             'step1_draw': 'unstarted', 'step2_explore': 'unstarted',
             'step3_listen': 'unstarted', 'step4_learn': 'unstarted'},
-            'human_gate_enabled': True}
+            'human_gate_enabled': True, 'data_classification': 'unknown'}
         with open(target_dir / 'project.yaml', 'w', encoding='utf-8') as f:
             yaml.safe_dump(data, f, allow_unicode=True)
         with open(target_dir / 'sources' / 'index.yaml', 'w', encoding='utf-8') as f:
@@ -127,7 +160,8 @@ class ProjectService:
     @staticmethod
     def status(project_dir: Path):
         with open(project_dir / 'project.yaml', 'r', encoding='utf-8') as f:
-            print(yaml.safe_load(f).get('status', {}))
+            data = yaml.safe_load(f) or {}
+        print({'status': data.get('status', {}), 'data_classification': _data_classification(project_dir)})
 
 
 def get_llm_provider(provider: str, project_dir: Path):
@@ -179,6 +213,7 @@ class DrawService:
             print(resp.content)
             return
         parse_and_save_draw(project_dir, resp.content, resp.ai_completions)
+        _mark_mock_demo(project_dir)
 
 
 class ExploreService:
@@ -191,6 +226,7 @@ class ExploreService:
             print(resp.content)
             return
         parse_and_save_explore(project_dir, resp.content, resp.ai_completions)
+        _mark_mock_demo(project_dir)
 
 
 def _guide_markdown(parsed):
@@ -219,9 +255,11 @@ class InterviewService:
         atomic_write(project_dir / 'interviews' / 'guide.md', _guide_markdown(parsed), project_dir)
         save_ai_completions(project_dir, 'interview_guide', resp.ai_completions)
         update_status(project_dir, 'step3_listen', 'in_progress')
+        if provider == 'mock':
+            _mark_mock_demo(project_dir)
 
     @staticmethod
-    def add_interview(project_dir: Path, file_path: str):
+    def add_interview(project_dir: Path, file_path: str, data_classification='unknown'):
         content = Path(file_path).read_text(encoding='utf-8')
         found = Anonymizer.scan(content)
         if found:
@@ -229,7 +267,10 @@ class InterviewService:
         dest = project_dir / 'interviews' / f'interview_{Path(file_path).stem}.yaml'
         validate_project_path(dest, project_dir)
         with open(dest, 'w', encoding='utf-8') as f:
-            yaml.safe_dump({'content': content, 'refutations': [], 'target': Path(file_path).stem}, f, allow_unicode=True)
+            if data_classification not in {'real', 'synthetic', 'unknown'}:
+                raise ValueError('data_classification must be real, synthetic, or unknown')
+            yaml.safe_dump({'content': content, 'refutations': [], 'target': Path(file_path).stem,
+                            'data_classification': data_classification}, f, allow_unicode=True)
 
 
 class LearnService:
@@ -265,6 +306,7 @@ class LearnService:
                 yaml.safe_dump(iv_data, f, allow_unicode=True)
             save_ai_completions(project_dir, 'learn_interview', resp.ai_completions, fixture=resp.fixture_used)
         _finalize_learn(project_dir, interviews)
+        _mark_mock_demo(project_dir)
 
 
 def _finalize_learn(project_dir, interviews):
@@ -427,5 +469,243 @@ class ReportService:
                     '現在の対処方法と不満', '直接競合', '間接代替', '無消費',
                     'インタビューから得た事実と引用', '反証、CPF評価、AI補完部分',
                     '未確認事項と次に確認すべきこと']
-        report = '# Final Report\n\n' + ''.join(f'## {i}. {headings[i - 1]}\n{data[i]}\n\n' for i in range(1, 16))
+        classification = _data_classification(project_dir)
+        warning = '' if classification == 'real' else '\n警告: これは機能確認または仮説生成であり、実顧客検証・CPF確立・市場成立を示しません。\n'
+        report = (f'# Final Report\n\nデータ区分: {classification}{warning}\n' +
+                  ''.join(f'## {i}. {headings[i - 1]}\n{data[i]}\n\n' for i in range(1, 16)))
         atomic_write(project_dir / 'reports' / 'final_report.md', report, project_dir)
+
+
+def _inside_project(path: Path, project_dir: Path):
+    try:
+        path.resolve().relative_to(project_dir.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+class DoctorService:
+    @staticmethod
+    def diagnose(project_dir: Path):
+        result = {'status': 'ok', 'errors': [], 'warnings': [], 'checks': [], 'next_actions': []}
+
+        def check(name, state, detail):
+            result['checks'].append({'name': name, 'status': state, 'detail': detail})
+            if state == 'error':
+                result['errors'].append(f'{name}: {detail}')
+            elif state == 'warning':
+                result['warnings'].append(f'{name}: {detail}')
+
+        project_file = project_dir / 'project.yaml'
+        if not project_file.exists():
+            check('project.yaml', 'error', 'project.yaml がありません。initを実行してください')
+            result['status'] = 'error'
+            result['next_actions'] = ['needs-detector init <name>']
+            return result
+        try:
+            with open(project_file, 'r', encoding='utf-8') as f:
+                project = yaml.safe_load(f)
+            if not isinstance(project, dict) or not isinstance(project.get('status'), dict):
+                raise ValueError('必須キー status がありません')
+            check('project.yaml', 'ok', '構文と必須キーは正常です')
+        except (OSError, yaml.YAMLError, ValueError) as exc:
+            check('project.yaml', 'error', str(exc))
+            result['status'] = 'error'
+            result['next_actions'] = ['project.yamlを修復してください']
+            return result
+
+        source_index = project_dir / 'sources' / 'index.yaml'
+        if source_index.exists():
+            try:
+                with open(source_index, 'r', encoding='utf-8') as f:
+                    sources = (yaml.safe_load(f) or {}).get('sources', [])
+                missing = []
+                external = []
+                for source in sources:
+                    name = source.get('file_name') if isinstance(source, dict) else None
+                    path = project_dir / str(name) if name else project_dir / '__missing__'
+                    if not _inside_project(path, project_dir):
+                        external.append(str(name))
+                    elif not path.exists():
+                        missing.append(str(name))
+                if missing or external:
+                    check('sources', 'error', f'missing={missing}, external={external}')
+                else:
+                    check('sources', 'ok', f'{len(sources)}件の資料を確認しました')
+            except (OSError, yaml.YAMLError, AttributeError) as exc:
+                check('sources', 'error', str(exc))
+        else:
+            check('sources', 'warning', 'sources/index.yamlがありません')
+
+        for path in sorted((project_dir / 'personas').glob('*.yaml')):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    from needs_detector.domain.models.llm_models import Persona
+                    Persona(**(yaml.safe_load(f) or {}))
+            except (OSError, yaml.YAMLError, ValidationError) as exc:
+                check(f'persona:{path.name}', 'error', str(exc))
+        alternatives = project_dir / 'alternatives' / 'alternatives.yaml'
+        if alternatives.exists():
+            try:
+                with open(alternatives, 'r', encoding='utf-8') as f:
+                    ExploreResponse(**(yaml.safe_load(f) or {}))
+                check('alternatives', 'ok', 'スキーマは正常です')
+            except (OSError, yaml.YAMLError, ValidationError) as exc:
+                check('alternatives', 'error', str(exc))
+
+        interviews = sorted((project_dir / 'interviews').glob('interview_*.yaml'))
+        for path in interviews:
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    interview = yaml.safe_load(f) or {}
+                if not isinstance(interview.get('content'), str) or not isinstance(interview.get('refutations', []), list):
+                    raise ValueError('contentまたはrefutationsが不正です')
+                _validate_quotes(interview, interview.get('refutations', []))
+            except (OSError, yaml.YAMLError, ValueError, QuoteValidationError) as exc:
+                check(f'interview:{path.name}', 'error', str(exc))
+
+        index_file, jobs = _load_jobs(project_dir)
+        ids = [j.get('job_id') for j in jobs if isinstance(j, dict)]
+        if len(ids) != len(set(ids)):
+            check('manual_jobs', 'error', 'job_idが重複しています')
+        unknown_targets = []
+        job_errors = []
+        for job in jobs:
+            if not isinstance(job, dict) or not job.get('job_id'):
+                job_errors.append('不正なジョブレコード')
+                continue
+            request = index_file.parent / str(job.get('prompt_file', ''))
+            if not _inside_project(request, project_dir) or not request.exists():
+                job_errors.append(f"request missing: {job.get('job_id')}")
+            else:
+                try:
+                    with open(request, 'r', encoding='utf-8') as f:
+                        request_data = json_module.load(f)
+                    if (request_data.get('job_id') != job.get('job_id') or
+                            request_data.get('prompt_used') != job.get('prompt_used') or
+                            request_data.get('target') != job.get('target')):
+                        job_errors.append(f"request mismatch: {job.get('job_id')}")
+                except (OSError, json_module.JSONDecodeError, AttributeError):
+                    job_errors.append(f"request invalid: {job.get('job_id')}")
+            if job.get('status') == 'imported':
+                response = index_file.parent / str(job.get('response_file', ''))
+                if not response.exists():
+                    job_errors.append(f"response missing: {job.get('job_id')}")
+            if job.get('target') and not (project_dir / 'interviews' / f"{job['target']}.yaml").exists():
+                unknown_targets.append(job['target'])
+            if job.get('status') == 'failed':
+                job_errors.append(f"failed job: {job.get('job_id')}")
+        if job_errors or unknown_targets:
+            check('manual_jobs', 'error', f'{job_errors}, unknown_target={unknown_targets}')
+        elif jobs:
+            waiting = sum(j.get('status') == 'waiting_llm' for j in jobs)
+            check('manual_jobs', 'warning' if waiting else 'ok', f'{len(jobs)}件、waiting={waiting}')
+
+        status = project.get('status', {})
+        learn_result = project_dir / 'reports' / 'learn_results.yaml'
+        if status.get('step4_learn') == 'completed' and not interviews:
+            check('learn_state', 'error', 'インタビュー0件なのにStep 4がcompletedです')
+        elif status.get('step4_learn') == 'completed' and not learn_result.exists():
+            check('learn_state', 'error', 'Step 4 completedですがlearn_results.yamlがありません')
+        else:
+            check('learn_state', 'ok', 'Step状態と成果物の基本整合性を確認しました')
+
+        ac_file = project_dir / 'reports' / 'ai_completions.yaml'
+        if ac_file.exists():
+            try:
+                with open(ac_file, 'r', encoding='utf-8') as f:
+                    completions = (yaml.safe_load(f) or {}).get('ai_completions', [])
+                for item in completions:
+                    if item.get('step') not in {'draw_persona', 'explore_alternatives', 'interview_guide', 'learn_interview', 'learn_refutations'}:
+                        raise ValueError('AI補完の工程が不明です')
+                    artifact = item.get('related_artifact')
+                    if artifact and not _inside_project(project_dir / artifact, project_dir):
+                        raise ValueError('AI補完の成果物がプロジェクト外です')
+                    if not item.get('job_id') and not item.get('fixture') and not artifact:
+                        raise ValueError('AI補完の参照元がありません')
+                check('ai_completions', 'ok', f'{len(completions)}件を確認しました')
+            except (OSError, yaml.YAMLError, ValueError, AttributeError) as exc:
+                check('ai_completions', 'error', str(exc))
+
+        report = project_dir / 'reports' / 'final_report.md'
+        artifacts = [project_file, project_dir / 'idea.md', source_index, alternatives, learn_result, *interviews]
+        artifacts += list((project_dir / 'personas').glob('*.yaml'))
+        existing = [p for p in artifacts if p.exists()]
+        if report.exists() and existing and max(p.stat().st_mtime for p in existing) > report.stat().st_mtime:
+            check('report_freshness', 'warning', '最終レポートが成果物より古い可能性があります')
+        else:
+            check('report_freshness', 'ok', '最終レポートの時刻を確認しました')
+
+        if _data_classification(project_dir) in {'synthetic', 'unknown'}:
+            check('data_classification', 'warning', '合成データまたは未分類です。実顧客検証ではありません')
+        result['status'] = 'error' if result['errors'] else 'warning' if result['warnings'] else 'ok'
+        result['next_actions'] = ['doctorのerrorを修復'] if result['errors'] else []
+        return result
+
+    @staticmethod
+    def run(project_dir: Path, as_json=False):
+        result = DoctorService.diagnose(project_dir)
+        if as_json:
+            print(json_module.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"doctor: {result['status']}")
+            for item in result['errors'] + result['warnings']:
+                print(f'- {item}')
+            for action in result['next_actions']:
+                print(f'次の操作: {action}')
+        return 1 if result['errors'] else 0
+
+
+class NextService:
+    @staticmethod
+    def suggest(project_dir: Path):
+        diagnosis = DoctorService.diagnose(project_dir)
+        actions = []
+        if diagnosis['errors']:
+            actions.append('needs-detector doctor')
+            return {'status': diagnosis['status'], 'data_classification': _data_classification(project_dir), 'actions': actions[:3]}
+        project_file = project_dir / 'project.yaml'
+        if not project_file.exists():
+            return {'status': 'error', 'data_classification': 'unknown', 'actions': ['needs-detector init <name>']}
+        with open(project_file, 'r', encoding='utf-8') as f:
+            project = yaml.safe_load(f) or {}
+        if not (project_dir / 'idea.md').exists():
+            actions.append('needs-detector add-idea <file>')
+        if not list((project_dir / 'sources').glob('*.*')):
+            actions.append('needs-detector add-source <file>')
+        jobs = _load_jobs(project_dir)[1]
+        for job in jobs:
+            if job.get('status') == 'waiting_llm':
+                actions.append(f"needs-detector import-llm-response <response.json>  # job_id={job.get('job_id')} target={job.get('target')}")
+        statuses = project.get('status', {})
+        if statuses.get('step1_draw') == 'unstarted' and not actions:
+            actions.append('needs-detector draw --provider mock --fixture-key dataset_a')
+        if statuses.get('step2_explore') == 'unstarted' and list((project_dir / 'personas').glob('*.yaml')) and len(actions) < 3:
+            actions.append('needs-detector explore --provider mock --fixture-key dataset_a')
+        if not (project_dir / 'interviews' / 'guide.md').exists() and len(actions) < 3:
+            actions.append('needs-detector interview-guide')
+        interviews = list((project_dir / 'interviews').glob('interview_*.yaml'))
+        if not interviews and len(actions) < 3:
+            actions.append('現実の顧客へインタビューし、匿名化記録をadd-interviewする（検証完了とは扱いません）')
+        report = project_dir / 'reports' / 'final_report.md'
+        artifacts = [project_file, project_dir / 'idea.md', project_dir / 'sources' / 'index.yaml',
+                     project_dir / 'alternatives' / 'alternatives.yaml', project_dir / 'reports' / 'learn_results.yaml']
+        artifacts += list((project_dir / 'personas').glob('*.yaml'))
+        artifacts += list((project_dir / 'interviews').glob('interview_*.yaml'))
+        latest = max((path.stat().st_mtime for path in artifacts if path.exists()), default=0)
+        if statuses.get('step4_learn') == 'completed' and (not report.exists() or report.stat().st_mtime < latest) and len(actions) < 3:
+            actions.append('needs-detector report')
+        if not actions:
+            actions = ['新しいインタビューを追加する', '未確認事項を検証する']
+        return {'status': diagnosis['status'], 'data_classification': _data_classification(project_dir), 'actions': actions[:3]}
+
+    @staticmethod
+    def run(project_dir: Path, as_json=False):
+        result = NextService.suggest(project_dir)
+        if as_json:
+            print(json_module.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"next ({result['data_classification']}):")
+            for action in result['actions']:
+                print(f'- {action}')
+        return 0

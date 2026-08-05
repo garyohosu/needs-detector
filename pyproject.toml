@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "needs-detector"
-version = "0.1.0"
+version = "0.2.0"
 description = "CLI tool for continuous needs validation"
 authors = [
     { name = "Hantani" }
@@ -27,4 +27,8 @@ needs-detector = "needs_detector.cli.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/needs_detector"]
-include = ["src/needs_detector/fixtures/**/*.json"]
+include = ["src/needs_detector/fixtures/**/*.json", "templates/**/*.md", "templates/**/*.yaml", "examples/**/*.md"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"templates" = "templates"
+"examples" = "examples"

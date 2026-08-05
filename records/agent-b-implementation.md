@@ -74,6 +74,12 @@ All 27 tests pass, including E2E and Multi-interview E2E tests.
 Implemented fixes A-F and tested.
 All 28 tests pass.
 
+## 009 リリース候補対応
+
+- root AGENTS.md、doctor/next、データ区分、README、実パイロットテンプレート、合成デモ、CHANGELOGを追加。
+- wheelへrootテンプレートと合成デモをforce-includeし、インストール後CLIを検証。
+- 35テスト、doctor/next CLI smoke、wheel検証に成功。
+
 ## 008 Cycle 2 実装・最終確認
 
 - Manual応答の`ai_completions`を`AICompletion`で検証。

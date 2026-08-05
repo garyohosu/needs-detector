@@ -19,7 +19,10 @@ def test_wheel_packaging(tmp_path):
     
     import zipfile
     with zipfile.ZipFile(wheel_file) as zf:
-        assert any(n.startswith('needs_detector/fixtures/llm/') for n in zf.namelist()), "Fixtures not found in wheel"
+        names = zf.namelist()
+        assert any(n.startswith('needs_detector/fixtures/llm/') for n in names), "Fixtures not found in wheel"
+        assert any(n.endswith('templates/real-pilot/interview-record-template.md') for n in names), "Pilot templates not found in wheel"
+        assert any(n.endswith('examples/synthetic-demo/README.md') for n in names), "Synthetic demo not found in wheel"
 
     # 2. Install wheel to a temp target dir
     install_dir = tmp_path / "install"
@@ -35,11 +38,22 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 
 from needs_detector.infra.llm.base import MockLLMProvider
+from needs_detector.core.services import ProjectService
+from needs_detector.cli.main import main
 provider = MockLLMProvider()
 # Verify fixture loads successfully
 try:
     resp = provider.generate("draw_persona", "Some Context", "dataset_a")
     if resp.prompt_used != 'draw_persona':
+        sys.exit(1)
+    ProjectService.init_project(Path('installed-project'), 'installed-project')
+    import os
+    os.chdir('installed-project')
+    sys.argv = ['needs-detector', 'doctor', '--json']
+    if main() != 0:
+        sys.exit(1)
+    sys.argv = ['needs-detector', 'next', '--json']
+    if main() != 0:
         sys.exit(1)
     print("SUCCESS")
 except Exception as e:

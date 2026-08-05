@@ -2,7 +2,8 @@ import argparse
 import sys
 from pathlib import Path
 from pydantic import ValidationError
-from needs_detector.core.services import ProjectService, DrawService, ExploreService, InterviewService, LearnService, ReportService, HumanGateError
+from needs_detector.core.services import (ProjectService, DrawService, ExploreService, InterviewService,
+    LearnService, ReportService, DoctorService, NextService, HumanGateError)
 from needs_detector.domain.models.exceptions import MockFixtureNotFoundError, QuoteValidationError
 
 def main():
@@ -33,6 +34,7 @@ def main():
 
     add_int_parser = subparsers.add_parser('add-interview')
     add_int_parser.add_argument('file')
+    add_int_parser.add_argument('--data-classification', choices=['real', 'synthetic', 'unknown'], default='unknown')
 
     learn_parser = subparsers.add_parser('learn')
     learn_parser.add_argument('--provider', default='mock')
@@ -44,6 +46,12 @@ def main():
     
     import_parser = subparsers.add_parser('import-llm-response')
     import_parser.add_argument('file')
+
+    doctor_parser = subparsers.add_parser('doctor')
+    doctor_parser.add_argument('--json', action='store_true')
+
+    next_parser = subparsers.add_parser('next')
+    next_parser.add_argument('--json', action='store_true')
 
     args = parser.parse_args()
 
@@ -66,7 +74,7 @@ def main():
         elif args.command == 'interview-guide':
             InterviewService.generate_guide(project_dir, args.provider, args.fixture_key)
         elif args.command == 'add-interview':
-            InterviewService.add_interview(project_dir, args.file)
+            InterviewService.add_interview(project_dir, args.file, args.data_classification)
         elif args.command == 'learn':
             LearnService.learn(project_dir, args.provider, args.fixture_key)
         elif args.command == 'report':
@@ -76,6 +84,10 @@ def main():
         elif args.command == 'import-llm-response':
             from needs_detector.core.services import ImportService
             ImportService.import_response(project_dir, args.file)
+        elif args.command == 'doctor':
+            return DoctorService.run(project_dir, args.json)
+        elif args.command == 'next':
+            return NextService.run(project_dir, args.json)
         else:
             parser.print_help()
     except (ValueError, TypeError, OSError, ValidationError, HumanGateError,
