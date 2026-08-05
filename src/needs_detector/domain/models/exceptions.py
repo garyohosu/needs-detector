@@ -1,0 +1,2 @@
+class QuoteValidationError(Exception):
+    pass

@@ -1,0 +1,5 @@
+{
+    "direct_competition": [{"name": "Direct A", "benefits": "B", "problems": "P", "cost_time": "C"}],
+    "indirect_alternatives": [],
+    "non_consumption": []
+}

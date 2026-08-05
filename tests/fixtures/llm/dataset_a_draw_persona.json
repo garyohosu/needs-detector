@@ -1,0 +1,18 @@
+{
+    "personas": [{
+        "id": "p_a",
+        "name": "Persona A",
+        "situation": "Task Management",
+        "jobs": {
+            "functional": "F A",
+            "emotional": "E A",
+            "social": "S A"
+        },
+        "impediments": "I A",
+        "current_coping": "C A",
+        "dissatisfaction": "D A",
+        "evidence_type": "evidence",
+        "source_reference": "ref",
+        "questions_to_verify": ["Q A"]
+    }]
+}

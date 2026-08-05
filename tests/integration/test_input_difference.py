@@ -10,8 +10,8 @@ def test_input_difference(tmp_path):
     ProjectService.init_project(proj_a, "A")
     ProjectService.init_project(proj_b, "B")
     
-    (proj_a / "idea.md").write_text("Idea A", encoding="utf-8")
-    (proj_b / "idea.md").write_text("Idea B", encoding="utf-8")
+    (proj_a / "idea.md").write_text("Idea A\nFIXTURE_KEY: dataset_a", encoding="utf-8")
+    (proj_b / "idea.md").write_text("Idea B\nFIXTURE_KEY: dataset_b", encoding="utf-8")
     
     DrawService.draw(proj_a, "mock")
     DrawService.draw(proj_b, "mock")

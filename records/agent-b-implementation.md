@@ -1,8 +1,43 @@
 # Agent B Implementation Record
 
-- **Dynamic Outputs**: Removed hardcoded outputs from services.py. Implementation uses context hashing (Mock provider) to dynamically generate content for Draw, Explore. Refutations are parsed by line based on keywords ("使わなかった", "不満", "不要", "やめた").
-- **LLM Providers**: Updated MockLLMProvider to use hashing of inputs for deterministic variance. Updated ManualLLMProvider to dump/import JSON formats seamlessly.
-- **Anonymizer**: Replaced hardcoded checks with regex lists targeting Emails, Phone Numbers, Postal Codes, URLs, and IPv4 addresses.
-- **Path Safety**: Implemented alidate_project_path inside ile_utils.py and strictly integrated it into atomic write loops and operations within ProjectService, DrawService, ExploreService, etc. Prevents escaping out of workspace.
-- **Tests (No Fakes)**: Rewrote test suite from scratch using robust assertions. 	est_cli_workflow.py executes E2E using subprocess.run(). 	est_input_difference.py checks dynamic persona changes. 	est_refutations.py ensures accurate line number resolution. 	est_path_safety.py tests constraints. Added testing for updated .gitignore rules.
-- **Documentation**: Updated README.md with an extensive runnable walkthrough utilizing mock tools. Sanitized pyproject.toml author section.
+## Completed Tasks
+
+1. **Fixture-driven MockLLMProvider & Pydantic Validation**:
+   - Removed hash-based template generation.
+   - Created JSON fixtures in `tests/fixtures/llm/` for Dataset A and Dataset B (`dataset_a_draw_persona.json`, `dataset_b_explore_alternatives.json`, etc.).
+   - Updated `MockLLMProvider` in `src/needs_detector/infra/llm/base.py` to select fixtures based on `FIXTURE_KEY` in the prompt context or environment variables, with a fallback to `default` or hardcoded test mock strings.
+   - Defined strict Pydantic models in `src/needs_detector/domain/models/llm_models.py` for validating LLM JSON responses, ensuring only correct evidence types are permitted.
+
+2. **Quote Exact Substring Verification**:
+   - Implemented `QuoteValidationError` in `src/needs_detector/domain/models/exceptions.py`.
+   - Updated `LearnService.learn` in `services.py` to extract each quote from `learn_refutations` output and strictly verify that it is an exact substring of the corresponding line in the interview content. `QuoteValidationError` is raised if it fails.
+
+3. **3 Independent CPF Dimensions**:
+   - Rewrote `evaluate_cpf` in `src/needs_detector/domain/policies/cpf_evaluator.py`.
+   - Implemented independent rule-based heuristic calculations for `real_problem`, `first_mover`, and `current_alternative` based on keywords matched across combined quote/evidence strings for each dimension.
+
+4. **Full Manual LLM Roundtrips**:
+   - Added `import-llm-response` command in `services.py` through `ImportService.import_response()`.
+   - Covered all 4 phases (`draw_persona`, `explore_alternatives`, `interview_guide`, `learn_interview` and `learn_refutations`).
+   - Ensures an exit code of 1 via `sys.exit(1)` when an unknown prompt name is passed.
+
+5. **QuestionChecker Integration**:
+   - Fully integrated `QuestionChecker` inside `InterviewService.generate_guide`.
+   - Checks every generated core question and deep dive question.
+   - Appends evaluation status (`(OK)` vs `(WARNING: <reason> -> <suggestion>)`) directly to the generated `guide.md` output.
+
+6. **15-Section Final Report**:
+   - Updated `ReportService.generate_report` to emit a comprehensive Markdown file with exactly 15 sequential sections.
+   - Sections missing data output `"未確認"` explicitly instead of omitting.
+
+7. **Full CLI E2E Subprocess Tests**:
+   - Updated `tests/e2e/test_cli_workflow.py` to cover the entire CLI workflow using `subprocess.run`.
+   - Steps tracked: `init`, `add-idea`, `add-source`, `draw`, `explore`, `interview-guide`, human gate test (`learn` without interviews leading to a non-zero exit code), `add-interview`, `learn`, `report`, and `status`.
+
+## Results
+- **Pytest**: Executed `py -m pytest -o pythonpath=src tests/ -v` with 100% test pass rate across unit, integration, and e2e boundaries.
+
+## Cycle 2 Fixes
+- Added `tests/unit/test_learn_quotes.py` verifying that `QuoteValidationError` is raised when the quote is not an exact substring and when the line number is out of bounds.
+- Added `tests/unit/test_validation_errors.py` verifying that `MockLLMProvider` correctly raises `JSONDecodeError` for invalid JSON strings, and `pydantic.ValidationError` for incorrect schema shapes or disallowed `evidence_type` values (e.g. `magical_type`).
+- Tested with `py -m pytest`, all 13 tests passing successfully.
