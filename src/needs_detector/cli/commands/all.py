@@ -1,0 +1,10 @@
+def init(): pass
+def add_idea(): pass
+def add_source(): pass
+def draw(): pass
+def explore(): pass
+def interview_guide(): pass
+def add_interview(): pass
+def learn(): pass
+def report(): pass
+def status(): pass
