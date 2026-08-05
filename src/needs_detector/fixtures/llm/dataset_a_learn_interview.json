@@ -34,5 +34,11 @@
       ],
       "continued_use_reason": []
     }
-  }
+  },
+  "ai_completions": [
+    {
+      "content": "AI補完の推定です。",
+      "related_artifact": "artifacts"
+    }
+  ]
 }

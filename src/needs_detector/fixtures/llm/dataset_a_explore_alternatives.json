@@ -22,5 +22,11 @@
       "problems": "Forget things",
       "cost_time": "Zero"
     }
+  ],
+  "ai_completions": [
+    {
+      "content": "AI補完の推定です。",
+      "related_artifact": "artifacts"
+    }
   ]
 }

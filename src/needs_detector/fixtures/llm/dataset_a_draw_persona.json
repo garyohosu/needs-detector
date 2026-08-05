@@ -18,5 +18,11 @@
         "How often do you lose papers?"
       ]
     }
+  ],
+  "ai_completions": [
+    {
+      "content": "AI Completion test",
+      "related_artifact": "personas/persona_p_a.yaml"
+    }
   ]
 }

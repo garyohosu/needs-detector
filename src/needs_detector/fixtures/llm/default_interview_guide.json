@@ -1,1 +1,14 @@
-{"core_questions": ["Q1"], "deep_dive_questions": ["D1"]}
+{
+  "core_questions": [
+    "Q1"
+  ],
+  "deep_dive_questions": [
+    "D1"
+  ],
+  "ai_completions": [
+    {
+      "content": "AI補完の推定です。",
+      "related_artifact": "artifacts"
+    }
+  ]
+}

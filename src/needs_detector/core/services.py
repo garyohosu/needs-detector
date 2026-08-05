@@ -267,11 +267,51 @@ class ImportService:
                 data = json.load(f)
         except Exception:
             sys.exit(1)
+            
+        import yaml
+        ac_file = project_dir / 'reports' / 'ai_completions.yaml'
+        if not ac_file.exists():
+            with open(ac_file, 'w', encoding='utf-8') as f:
+                yaml.dump({'ai_completions': []}, f)
+                
+        ai_completions = data.get('ai_completions', [])
+        if ai_completions:
+            with open(ac_file, 'r', encoding='utf-8') as f:
+                ac_data = yaml.safe_load(f) or {'ai_completions': []}
+            for ac in ai_completions:
+                if isinstance(ac, dict):
+                    ac['step'] = data.get('prompt_used')
+                    ac['job_id'] = data.get('job_id')
+                    ac_data['ai_completions'].append(ac)
+                elif isinstance(ac, str):
+                    ac_data['ai_completions'].append({
+                        'step': data.get('prompt_used'),
+                        'job_id': data.get('job_id'),
+                        'content': ac
+                    })
+            with open(ac_file, 'w', encoding='utf-8') as f:
+                yaml.dump(ac_data, f, allow_unicode=True)
 
         prompt_used = data.get('prompt_used', '')
         content_dict = data.get('content', {})
         if not prompt_used or not content_dict:
             sys.exit(1)
+
+        job_id = data.get('job_id')
+        job_record = None
+        index_file = project_dir / 'manual_prompts' / 'index.yaml'
+        if job_id and index_file.exists():
+            with open(index_file, 'r', encoding='utf-8') as f:
+                jobs = yaml.safe_load(f) or []
+            for j in jobs:
+                if j.get('job_id') == job_id:
+                    job_record = j
+                    break
+            if not job_record or job_record.get('prompt_used') != prompt_used:
+                sys.exit(1)
+            target = job_record.get('target')
+            if prompt_used == 'learn_interview' and target and data.get('target') != target:
+                sys.exit(1)
 
         content = json.dumps(content_dict)
         
@@ -336,21 +376,42 @@ class ImportService:
                 with open(iv_path, 'w', encoding='utf-8') as f:
                     yaml.dump(iv_data, f, allow_unicode=True)
                 
-                interviews = list((project_dir / 'interviews').glob('interview_*.yaml'))
-                cpf = evaluate_cpf(interviews)
-                
-                all_content = "".join([iv.read_text(encoding='utf-8') for iv in interviews])
-                analysis_hash = hashlib.sha256(all_content.encode('utf-8')).hexdigest()[:16]
-                
-                learn_data = {'cpf_evaluation': cpf, 'analysis_hash': analysis_hash}
-                dest = project_dir / 'reports' / 'learn_results.yaml'
-                with open(dest, 'w', encoding='utf-8') as f:
-                    yaml.dump(learn_data, f, allow_unicode=True)
-                update_status(project_dir, 'step3_listen', 'completed')
-                update_status(project_dir, 'step4_learn', 'completed')
+                all_completed = True
+                if job_record and index_file.exists():
+                    job_record['status'] = 'imported'
+                    from datetime import datetime, timezone
+                    job_record['imported_at'] = datetime.now(timezone.utc).isoformat()
+                    with open(index_file, 'w', encoding='utf-8') as f:
+                        yaml.dump(jobs, f)
+                    
+                    learn_jobs = [j for j in jobs if j.get('prompt_used') == 'learn_interview']
+                    if any(j.get('status') != 'imported' for j in learn_jobs):
+                        all_completed = False
+
+                if all_completed:
+                    interviews = list((project_dir / 'interviews').glob('interview_*.yaml'))
+                    cpf = evaluate_cpf(interviews)
+                    
+                    all_content = "".join([iv.read_text(encoding='utf-8') for iv in interviews])
+                    analysis_hash = hashlib.sha256(all_content.encode('utf-8')).hexdigest()[:16]
+                    
+                    learn_data = {'cpf_evaluation': cpf, 'analysis_hash': analysis_hash}
+                    dest = project_dir / 'reports' / 'learn_results.yaml'
+                    with open(dest, 'w', encoding='utf-8') as f:
+                        yaml.dump(learn_data, f, allow_unicode=True)
+                    update_status(project_dir, 'step3_listen', 'completed')
+                    update_status(project_dir, 'step4_learn', 'completed')
+                else:
+                    update_status(project_dir, 'step4_learn', 'waiting_llm')
                 print("Imported learn interview")
             else:
                 sys.exit(1)
+            if job_record and prompt_used != 'learn_interview' and index_file.exists():
+                job_record['status'] = 'imported'
+                from datetime import datetime, timezone
+                job_record['imported_at'] = datetime.now(timezone.utc).isoformat()
+                with open(index_file, 'w', encoding='utf-8') as f:
+                    yaml.dump(jobs, f)
         except ValidationError:
             sys.exit(1)
 
@@ -373,21 +434,41 @@ class ReportService:
                     report_data["Section 2"] = ", ".join([s.get('file_name', '') for s in sources])
 
         # Load real data for sections
-        personas = list((project_dir / 'personas').glob('*.yaml'))
+        personas = sorted(list((project_dir / 'personas').glob('*.yaml')))
         if personas:
-            p_data = yaml.safe_load(open(personas[0], 'r', encoding='utf-8'))
-            report_data["Section 3"] = p_data.get('name', '(データなし)')
-            report_data["Section 4"] = p_data.get('situation', '(データなし)')
-            jobs = p_data.get('jobs', {})
-            report_data["Section 5"] = jobs.get('functional', '(データなし)')
-            report_data["Section 6"] = jobs.get('emotional', '(データなし)')
-            report_data["Section 7"] = jobs.get('social', '(データなし)')
-            report_data["Section 8"] = p_data.get('impediments', '(データなし)')
-            report_data["Section 9"] = f"{p_data.get('current_coping', '(データなし)')} - {p_data.get('dissatisfaction', '(データなし)')}"
+            names = []
+            situations = []
+            func_jobs = []
+            emo_jobs = []
+            soc_jobs = []
+            impediments = []
+            copings = []
+            all_qtv = []
             
-            # Section 15 handling
-            qtv = p_data.get('questions_to_verify', [])
-            report_data["Section 15"] = "\n".join([f"- {q}" for q in qtv]) if qtv else "(データなし)"
+            for p_file in personas:
+                p_data = yaml.safe_load(open(p_file, 'r', encoding='utf-8'))
+                pid = p_data.get('id', p_file.stem)
+                names.append(p_data.get('name', '(データなし)'))
+                situations.append(p_data.get('situation', '(データなし)'))
+                jobs = p_data.get('jobs', {})
+                func_jobs.append(jobs.get('functional', '(データなし)'))
+                emo_jobs.append(jobs.get('emotional', '(データなし)'))
+                soc_jobs.append(jobs.get('social', '(データなし)'))
+                impediments.append(p_data.get('impediments', '(データなし)'))
+                copings.append(f"{p_data.get('current_coping', '(データなし)')} - {p_data.get('dissatisfaction', '(データなし)')}")
+                
+                qtv = p_data.get('questions_to_verify', [])
+                if qtv:
+                    all_qtv.extend([f"- [{pid}] {q}" for q in qtv])
+            
+            report_data["Section 3"] = "\n\n".join(names)
+            report_data["Section 4"] = "\n\n".join(situations)
+            report_data["Section 5"] = "\n\n".join(func_jobs)
+            report_data["Section 6"] = "\n\n".join(emo_jobs)
+            report_data["Section 7"] = "\n\n".join(soc_jobs)
+            report_data["Section 8"] = "\n\n".join(impediments)
+            report_data["Section 9"] = "\n\n".join(copings)
+            report_data["Section 15"] = "\n".join(all_qtv) if all_qtv else "(データなし)"
 
         alts = project_dir / 'alternatives' / 'alternatives.yaml'
         if alts.exists():
@@ -401,7 +482,15 @@ class ReportService:
         if learn_res.exists():
             l_data = yaml.safe_load(open(learn_res, 'r', encoding='utf-8'))
             cpf = l_data.get('cpf_evaluation', {})
-            report_data["Section 14"] = "CPF評価:\n" + yaml.dump(cpf, allow_unicode=True) + "\nAI補完部分: ペルソナとインタビュー事実との間の推論による補完"
+            
+            ac_file = project_dir / 'reports' / 'ai_completions.yaml'
+            ac_text = "(AI補完なし)"
+            if ac_file.exists():
+                ac_data = yaml.safe_load(open(ac_file, 'r', encoding='utf-8'))
+                if ac_data and ac_data.get('ai_completions'):
+                    ac_text = yaml.dump(ac_data.get('ai_completions'), allow_unicode=True)
+            
+            report_data["Section 14"] = "CPF評価:\n" + yaml.dump(cpf, allow_unicode=True) + "\nAI補完:\n" + ac_text
             
         interviews = list((project_dir / 'interviews').glob('interview_*.yaml'))
         quotes = []

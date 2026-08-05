@@ -28,7 +28,7 @@ def test_report_content(tmp_path):
     report = (project_dir / "reports" / "final_report.md").read_text(encoding="utf-8")
     assert "タスク管理ペルソナA" in report
     
-    assert "[interview_01.md:L" in report or "interview_01.md:L" in report or "interview_" in report
+    assert "interview_" in report
     assert "real_problem" in report
     assert "first_mover" in report
     assert "current_alternative" in report
@@ -54,3 +54,30 @@ def test_report_content(tmp_path):
     # Check semantic difference
     assert "タスク管理" not in report2
     assert report != report2
+
+def test_multiple_personas_in_same_report(tmp_path):
+    import yaml
+    env = get_env()
+    project_dir = tmp_path / "proj_multi"
+    subprocess.run([sys.executable, "-m", "needs_detector.cli.main", "init", "proj_multi", "--dir", str(tmp_path)], env=env)
+    
+    # Create two personas directly
+    personas_dir = project_dir / "personas"
+    personas_dir.mkdir(exist_ok=True, parents=True)
+    
+    p1 = {"id": "p1", "name": "Persona Alpha", "questions_to_verify": ["Q1 from Alpha"]}
+    p2 = {"id": "p2", "name": "Persona Beta", "questions_to_verify": ["Q2 from Beta"]}
+    
+    with open(personas_dir / "p1.yaml", 'w', encoding='utf-8') as pf:
+        yaml.dump(p1, pf)
+    with open(personas_dir / "p2.yaml", 'w', encoding='utf-8') as pf:
+        yaml.dump(p2, pf)
+        
+    subprocess.run([sys.executable, "-m", "needs_detector.cli.main", "report"], cwd=project_dir, env=env)
+    
+    report = (project_dir / "reports" / "final_report.md").read_text(encoding="utf-8")
+    
+    assert "Persona Alpha" in report
+    assert "Persona Beta" in report
+    assert "[p1] Q1 from Alpha" in report
+    assert "[p2] Q2 from Beta" in report

@@ -27,25 +27,22 @@ class MockLLMProvider(LLMProvider):
     def _get_fixture_key(self, context: str, fixture_key_arg: str, project_dir: Path) -> str:
         if fixture_key_arg:
             return fixture_key_arg
-            
-        if project_dir and (project_dir / 'project.yaml').exists():
-            try:
-                with open(project_dir / 'project.yaml', 'r', encoding='utf-8') as f:
-                    data = yaml.safe_load(f)
-                if 'mock_fixture_key' in data:
-                    return data['mock_fixture_key']
-            except Exception:
-                pass
 
-        match = re.search(r'FIXTURE_KEY:\s*([\w\-]+)', str(context))
-        if match:
-            return match.group(1)
+        if project_dir and (project_dir / 'project.yaml').exists():
+            import yaml
+            with open(project_dir / 'project.yaml', 'r', encoding='utf-8') as f:
+                try:
+                    data = yaml.safe_load(f)
+                except yaml.YAMLError as e:
+                    raise ValueError(f"YAML parsing error in project.yaml: {e}")
             
-        if "Persona A" in str(context):
-            return "dataset_a"
-        if "Persona B" in str(context):
-            return "dataset_b"
+            if not isinstance(data, dict):
+                raise TypeError("project.yaml root must be a dictionary")
+
+            if 'mock_fixture_key' in data:
+                return data['mock_fixture_key']
             
+        import os
         env_key = os.environ.get('MOCK_FIXTURE_KEY')
         if env_key:
             return env_key
@@ -74,16 +71,57 @@ class MockLLMProvider(LLMProvider):
         elif prompt_name in ['learn_refutations', 'learn_interview']:
             InterviewAnalysisResponse(**data)
 
-        return LLMResponse(content=content, ai_completions=["mock_completion"], prompt_used=prompt_name, model_name='mock', fixture_used=filename)
+        return LLMResponse(content=content, ai_completions=data.get('ai_completions', []), prompt_used=prompt_name, model_name='mock', fixture_used=filename)
 
 class ManualLLMProvider(LLMProvider):
     def __init__(self, export_dir: Path):
         self.export_dir = Path(export_dir)
         self.export_dir.mkdir(parents=True, exist_ok=True)
+        self.index_file = self.export_dir / "index.yaml"
+        if not self.index_file.exists():
+            import yaml
+            with open(self.index_file, 'w', encoding='utf-8') as f:
+                yaml.dump([], f)
 
     def generate(self, prompt_name, context, fixture_key=None, project_dir=None):
-        file_path = self.export_dir / f"{prompt_name}_prompt.json"
+        import uuid
+        import yaml
+        from datetime import datetime, timezone
+        
+        job_id = str(uuid.uuid4())
+        job_dir = self.export_dir / job_id
+        job_dir.mkdir(parents=True, exist_ok=True)
+        
+        target = None
+        if prompt_name == 'learn_interview':
+            # Extract target from context, e.g. "Target:interview_foo\nContent:..."
+            lines = str(context).splitlines()
+            for line in lines:
+                if line.startswith("Target:"):
+                    target = line.split("Target:", 1)[1].strip()
+                    break
+
+        file_path = job_dir / "request.json"
+        import json
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump({'prompt_used': prompt_name, 'context': context, 'instructions': 'Please fill content object.'}, f, ensure_ascii=False)
-        return LLMResponse(content=f"Exported to {file_path}. Use import-response to load.", ai_completions=[], prompt_used=prompt_name, model_name='manual')
+            
+        with open(self.index_file, 'r', encoding='utf-8') as f:
+            jobs = yaml.safe_load(f) or []
+            
+        job_record = {
+            'job_id': job_id,
+            'prompt_used': prompt_name,
+            'target': target,
+            'status': 'waiting_llm',
+            'prompt_file': f"{job_id}/request.json",
+            'response_file': None,
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'imported_at': None
+        }
+        jobs.append(job_record)
+        with open(self.index_file, 'w', encoding='utf-8') as f:
+            yaml.dump(jobs, f)
+            
+        return LLMResponse(content=f"Job {job_id} exported to {file_path}. Use import-llm-response to load.", ai_completions=[], prompt_used=prompt_name, model_name='manual')
 

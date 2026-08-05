@@ -1,1 +1,11 @@
-{"direct_competition": [], "indirect_alternatives": [], "non_consumption": []}
+{
+  "direct_competition": [],
+  "indirect_alternatives": [],
+  "non_consumption": [],
+  "ai_completions": [
+    {
+      "content": "AI補完の推定です。",
+      "related_artifact": "artifacts"
+    }
+  ]
+}

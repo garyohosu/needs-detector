@@ -18,5 +18,11 @@
         "Why do candidates drop out?"
       ]
     }
+  ],
+  "ai_completions": [
+    {
+      "content": "AI補完の推定です。",
+      "related_artifact": "artifacts"
+    }
   ]
 }

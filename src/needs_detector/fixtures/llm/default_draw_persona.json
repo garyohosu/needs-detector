@@ -1,1 +1,28 @@
-{"personas": [{"id": "p1", "name": "Persona 1", "situation": "Busy", "jobs": {"functional": "F", "emotional": "E", "social": "S"}, "impediments": "I", "current_coping": "C", "dissatisfaction": "D", "evidence_type": "evidence", "source_reference": "ref", "questions_to_verify": ["Q1"]}]}
+{
+  "personas": [
+    {
+      "id": "p1",
+      "name": "Persona 1",
+      "situation": "Busy",
+      "jobs": {
+        "functional": "F",
+        "emotional": "E",
+        "social": "S"
+      },
+      "impediments": "I",
+      "current_coping": "C",
+      "dissatisfaction": "D",
+      "evidence_type": "evidence",
+      "source_reference": "ref",
+      "questions_to_verify": [
+        "Q1"
+      ]
+    }
+  ],
+  "ai_completions": [
+    {
+      "content": "AI補完の推定です。",
+      "related_artifact": "artifacts"
+    }
+  ]
+}
