@@ -1,0 +1,26 @@
+{
+  "direct_competition": [
+    {
+      "name": "Green",
+      "benefits": "Many users",
+      "problems": "Expensive",
+      "cost_time": "High"
+    }
+  ],
+  "indirect_alternatives": [
+    {
+      "name": "Twitter",
+      "benefits": "Free",
+      "problems": "Low quality",
+      "cost_time": "Time consuming"
+    }
+  ],
+  "non_consumption": [
+    {
+      "name": "Referrals only",
+      "benefits": "Trust",
+      "problems": "Low volume",
+      "cost_time": "Slow"
+    }
+  ]
+}

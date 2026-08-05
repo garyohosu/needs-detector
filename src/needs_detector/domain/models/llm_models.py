@@ -47,5 +47,26 @@ class Refutation(BaseModel):
     source: str
     evidence: Optional[CPFEvidence] = None
 
+class CPFRealProblem(BaseModel):
+    concrete_events: List[str] = Field(default_factory=list)
+    frequency: List[str] = Field(default_factory=list)
+    impact: List[str] = Field(default_factory=list)
+
+class CPFFirstMover(BaseModel):
+    time_spent: List[str] = Field(default_factory=list)
+    money_spent: List[str] = Field(default_factory=list)
+    attempts: List[str] = Field(default_factory=list)
+
+class CPFCurrentAlternative(BaseModel):
+    alternatives_used: List[str] = Field(default_factory=list)
+    dissatisfaction: List[str] = Field(default_factory=list)
+    continued_use_reason: List[str] = Field(default_factory=list)
+
+class CPFEvidenceStructure(BaseModel):
+    real_problem: CPFRealProblem = Field(default_factory=CPFRealProblem)
+    first_mover: CPFFirstMover = Field(default_factory=CPFFirstMover)
+    current_alternative: CPFCurrentAlternative = Field(default_factory=CPFCurrentAlternative)
+
 class InterviewAnalysisResponse(BaseModel):
     refutations: List[Refutation]
+    cpf_evidence: Optional[CPFEvidenceStructure] = None

@@ -1,0 +1,28 @@
+{
+  "refutations": [],
+  "cpf_evidence": {
+    "real_problem": {
+      "concrete_events": [
+        "User said X"
+      ],
+      "frequency": [],
+      "impact": []
+    },
+    "first_mover": {
+      "time_spent": [
+        "Spent 2 hours"
+      ],
+      "money_spent": [],
+      "attempts": []
+    },
+    "current_alternative": {
+      "alternatives_used": [
+        "Alternative Y"
+      ],
+      "dissatisfaction": [
+        "It was slow"
+      ],
+      "continued_use_reason": []
+    }
+  }
+}

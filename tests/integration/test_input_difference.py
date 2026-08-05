@@ -26,8 +26,8 @@ def test_input_difference(tmp_path):
         
     assert data_a['name'] != data_b['name']
     
-    ExploreService.explore(proj_a, "mock")
-    ExploreService.explore(proj_b, "mock")
+    ExploreService.explore(proj_a, "mock", "dataset_a")
+    ExploreService.explore(proj_b, "mock", "dataset_b")
     
     alt_a = list((proj_a / 'alternatives').glob('*.yaml'))[0]
     alt_b = list((proj_b / 'alternatives').glob('*.yaml'))[0]

@@ -11,6 +11,8 @@ from needs_detector.domain.policies.question_checker import QuestionChecker
 from needs_detector.domain.policies.cpf_evaluator import evaluate_cpf
 from needs_detector.infra.llm.base import MockLLMProvider, ManualLLMProvider
 from needs_detector.domain.models.exceptions import QuoteValidationError
+from needs_detector.domain.models.llm_models import DrawResponse, ExploreResponse, InterviewGuideResponse, InterviewAnalysisResponse
+from pydantic import ValidationError
 
 class HumanGateError(Exception):
     pass
@@ -81,11 +83,12 @@ def update_status(project_dir: Path, step: str, status: str):
 
 def get_llm_provider(provider: str, project_dir: Path):
     if provider == 'manual':
-        return ManualLLMProvider(project_dir / 'exports')
+        return ManualLLMProvider(project_dir / 'manual_prompts')
     return MockLLMProvider()
 
 def parse_and_save_draw(project_dir: Path, content: str, ai_completions: list):
     parsed = json.loads(content)
+    DrawResponse(**parsed)
     for persona in parsed.get("personas", []):
         persona['ai_completions'] = ai_completions
         dest = project_dir / 'personas' / f"persona_{persona.get('id', 'default')}.yaml"
@@ -96,6 +99,7 @@ def parse_and_save_draw(project_dir: Path, content: str, ai_completions: list):
 
 def parse_and_save_explore(project_dir: Path, content: str):
     parsed = json.loads(content)
+    ExploreResponse(**parsed)
     dest = project_dir / 'alternatives' / 'alternatives.yaml'
     validate_project_path(dest, project_dir)
     with open(dest, 'w', encoding='utf-8') as f:
@@ -104,7 +108,7 @@ def parse_and_save_explore(project_dir: Path, content: str):
 
 class DrawService:
     @staticmethod
-    def draw(project_dir: Path, provider: str):
+    def draw(project_dir: Path, provider: str, fixture_key: str = None):
         idea = ""
         idea_path = project_dir / 'idea.md'
         if idea_path.exists():
@@ -121,9 +125,10 @@ class DrawService:
         
         context = f"Idea:\n{idea}\nSources:\n{sources}"
         llm = get_llm_provider(provider, project_dir)
-        resp = llm.generate('draw_persona', context)
+        resp = llm.generate('draw_persona', context, fixture_key, project_dir)
         
-        if resp.content.startswith('Exported to'):
+        if provider == 'manual':
+            update_status(project_dir, 'step1_draw', 'waiting_llm')
             print(resp.content)
             return
 
@@ -131,16 +136,17 @@ class DrawService:
 
 class ExploreService:
     @staticmethod
-    def explore(project_dir: Path, provider: str):
+    def explore(project_dir: Path, provider: str, fixture_key: str = None):
         personas = list((project_dir / 'personas').glob('*.yaml'))
         context = ""
         for p in personas:
             context += p.read_text(encoding='utf-8')
             
         llm = get_llm_provider(provider, project_dir)
-        resp = llm.generate('explore_alternatives', context)
+        resp = llm.generate('explore_alternatives', context, fixture_key, project_dir)
         
-        if resp.content.startswith('Exported to'):
+        if provider == 'manual':
+            update_status(project_dir, 'step2_explore', 'waiting_llm')
             print(resp.content)
             return
 
@@ -148,15 +154,17 @@ class ExploreService:
 
 class InterviewService:
     @staticmethod
-    def generate_guide(project_dir: Path, provider: str = 'mock'):
+    def generate_guide(project_dir: Path, provider: str = 'mock', fixture_key: str = None):
         llm = get_llm_provider(provider, project_dir)
-        resp = llm.generate('interview_guide', "Generate questions")
+        resp = llm.generate('interview_guide', "Generate questions", fixture_key, project_dir)
         
-        if resp.content.startswith('Exported to'):
+        if provider == 'manual':
+            update_status(project_dir, 'step3_listen', 'waiting_llm')
             print(resp.content)
             return
 
         parsed = json.loads(resp.content)
+        InterviewGuideResponse(**parsed)
         content = "## Interview Guide\n\n### Core Questions\n"
         for q in parsed.get("core_questions", []):
             chk = QuestionChecker.check(q)
@@ -189,11 +197,11 @@ class InterviewService:
         validate_project_path(dest, project_dir)
         
         with open(dest, 'w', encoding='utf-8') as f:
-            yaml.dump({'content': content, 'refutations': []}, f, allow_unicode=True)
+            yaml.dump({'content': content, 'refutations': [], 'target': Path(file_path).stem}, f, allow_unicode=True)
 
 class LearnService:
     @staticmethod
-    def learn(project_dir: Path, provider: str):
+    def learn(project_dir: Path, provider: str, fixture_key: str = None):
         interviews_dir = project_dir / 'interviews'
         interviews = list(interviews_dir.glob('interview_*.yaml'))
         
@@ -205,31 +213,44 @@ class LearnService:
         
         llm = get_llm_provider(provider, project_dir)
         
+        if provider == 'manual':
+            for iv in interviews:
+                with open(iv, 'r', encoding='utf-8') as f:
+                    iv_data = yaml.safe_load(f)
+                resp = llm.generate(f'learn_interview', f"Target:{iv.stem}\nContent:{iv_data['content']}", fixture_key, project_dir)
+            update_status(project_dir, 'step4_learn', 'waiting_llm')
+            return
+
         for iv in interviews:
             with open(iv, 'r', encoding='utf-8') as f:
                 iv_data = yaml.safe_load(f)
                 
             iv_lines = iv_data['content'].splitlines()
-            resp = llm.generate('learn_refutations', iv_data['content'])
-            if not resp.content.startswith('Exported to'):
-                parsed = json.loads(resp.content)
-                refs = parsed.get("refutations", [])
-                
-                for r in refs:
-                    q_text = r.get('quote', '')
-                    line_num = r.get('line', 0)
-                    if line_num < 1 or line_num > len(iv_lines):
-                        raise QuoteValidationError(f"Line {line_num} out of bounds")
-                    if q_text not in iv_lines[line_num - 1]:
-                        raise QuoteValidationError(f"Quote '{q_text}' not found in line {line_num}")
-                
-                iv_data['refutations'] = refs
-                with open(iv, 'w', encoding='utf-8') as f:
-                    yaml.dump(iv_data, f, allow_unicode=True)
+            resp = llm.generate('learn_interview', iv_data['content'], fixture_key, project_dir)
+            parsed = json.loads(resp.content)
+            InterviewAnalysisResponse(**parsed)
+            refs = parsed.get("refutations", [])
+            cpf_evidence = parsed.get("cpf_evidence", {})
+            
+            for r in refs:
+                q_text = r.get('quote', '')
+                line_num = r.get('line', 0)
+                if line_num < 1 or line_num > len(iv_lines):
+                    raise QuoteValidationError(f"Line {line_num} out of bounds")
+                if q_text not in iv_lines[line_num - 1]:
+                    raise QuoteValidationError(f"Quote '{q_text}' not found in line {line_num}")
+            
+            iv_data['refutations'] = refs
+            iv_data['cpf_evidence'] = cpf_evidence
+            with open(iv, 'w', encoding='utf-8') as f:
+                yaml.dump(iv_data, f, allow_unicode=True)
         
         cpf = evaluate_cpf(interviews)
         
-        learn_data = {'cpf_evaluation': cpf, 'analysis_hash': 'mock_hash'}
+        all_content = "".join([iv.read_text(encoding='utf-8') for iv in interviews])
+        analysis_hash = hashlib.sha256(all_content.encode('utf-8')).hexdigest()[:16]
+        
+        learn_data = {'cpf_evaluation': cpf, 'analysis_hash': analysis_hash}
         dest = project_dir / 'reports' / 'learn_results.yaml'
         validate_project_path(dest, project_dir)
         with open(dest, 'w', encoding='utf-8') as f:
@@ -241,37 +262,187 @@ class LearnService:
 class ImportService:
     @staticmethod
     def import_response(project_dir: Path, json_file_path: str):
-        with open(json_file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        try:
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            sys.exit(1)
+
         prompt_used = data.get('prompt_used', '')
-        content = json.dumps(data.get('content', {}))
+        content_dict = data.get('content', {})
+        if not prompt_used or not content_dict:
+            sys.exit(1)
+
+        content = json.dumps(content_dict)
         
-        if prompt_used == 'draw_persona':
-            parse_and_save_draw(project_dir, content, data.get('ai_completions', []))
-            print("Imported draw persona")
-        elif prompt_used == 'explore_alternatives':
-            parse_and_save_explore(project_dir, content)
-            print("Imported explore alternatives")
-        elif prompt_used == 'interview_guide':
-            print("Imported interview guide")
-        elif prompt_used in ('learn_refutations', 'learn_interview'):
-            print("Imported learn interview")
-        else:
-            print("Unknown prompt used in import")
+        try:
+            if prompt_used == 'draw_persona':
+                DrawResponse(**content_dict)
+                parse_and_save_draw(project_dir, content, data.get('ai_completions', []))
+                print("Imported draw persona")
+            elif prompt_used == 'explore_alternatives':
+                ExploreResponse(**content_dict)
+                parse_and_save_explore(project_dir, content)
+                print("Imported explore alternatives")
+            elif prompt_used == 'interview_guide':
+                InterviewGuideResponse(**content_dict)
+                parsed = content_dict
+                guide_content = "## Interview Guide\n\n### Core Questions\n"
+                for q in parsed.get("core_questions", []):
+                    chk = QuestionChecker.check(q)
+                    if chk.get('is_warning'):
+                        guide_content += f"- {q} (WARNING: {chk.get('reason')} -> {chk.get('suggestion')})\n"
+                    else:
+                        guide_content += f"- {q} (OK)\n"
+                guide_content += "\n### Deep Dive Questions\n"
+                for q in parsed.get("deep_dive_questions", []):
+                    chk = QuestionChecker.check(q)
+                    if chk.get('is_warning'):
+                        guide_content += f"- {q} (WARNING: {chk.get('reason')} -> {chk.get('suggestion')})\n"
+                    else:
+                        guide_content += f"- {q} (OK)\n"
+                    
+                guide_content += "\n### Warning\nAvoid leading questions. Never ask 'Would you use this?'"
+                
+                dest = project_dir / 'interviews' / 'guide.md'
+                atomic_write(dest, guide_content, project_dir)
+                update_status(project_dir, 'step3_listen', 'in_progress')
+                print("Imported interview guide")
+            elif prompt_used in ('learn_refutations', 'learn_interview'):
+                InterviewAnalysisResponse(**content_dict)
+                target = data.get('target')
+                if not target:
+                    sys.exit(1)
+                iv_path = project_dir / 'interviews' / f"{target}.yaml"
+                if not iv_path.exists():
+                    sys.exit(1)
+                
+                with open(iv_path, 'r', encoding='utf-8') as f:
+                    iv_data = yaml.safe_load(f)
+                iv_lines = iv_data['content'].splitlines()
+                refs = content_dict.get("refutations", [])
+                cpf_evidence = content_dict.get("cpf_evidence", {})
+                for r in refs:
+                    q_text = r.get('quote', '')
+                    line_num = r.get('line', 0)
+                    if not isinstance(line_num, int):
+                        sys.exit(1)
+                    if line_num < 1 or line_num > len(iv_lines):
+                        sys.exit(1)
+                    if q_text not in iv_lines[line_num - 1]:
+                        sys.exit(1)
+                iv_data['refutations'] = refs
+                iv_data['cpf_evidence'] = cpf_evidence
+                with open(iv_path, 'w', encoding='utf-8') as f:
+                    yaml.dump(iv_data, f, allow_unicode=True)
+                
+                interviews = list((project_dir / 'interviews').glob('interview_*.yaml'))
+                cpf = evaluate_cpf(interviews)
+                
+                all_content = "".join([iv.read_text(encoding='utf-8') for iv in interviews])
+                analysis_hash = hashlib.sha256(all_content.encode('utf-8')).hexdigest()[:16]
+                
+                learn_data = {'cpf_evaluation': cpf, 'analysis_hash': analysis_hash}
+                dest = project_dir / 'reports' / 'learn_results.yaml'
+                with open(dest, 'w', encoding='utf-8') as f:
+                    yaml.dump(learn_data, f, allow_unicode=True)
+                update_status(project_dir, 'step3_listen', 'completed')
+                update_status(project_dir, 'step4_learn', 'completed')
+                print("Imported learn interview")
+            else:
+                sys.exit(1)
+        except ValidationError:
             sys.exit(1)
 
 class ReportService:
     @staticmethod
     def generate_report(project_dir: Path):
-        report_data = {f"Section {i}": "未確認" for i in range(1, 16)}
+        report_data = {f"Section {i}": "(データなし)" for i in range(1, 16)}
         
         idea = ""
         if (project_dir / 'idea.md').exists():
             idea = (project_dir / 'idea.md').read_text(encoding='utf-8')
-            report_data["Section 1"] = idea if idea else "未確認"
+            report_data["Section 1"] = idea if idea else "(データなし)"
+            
+        index_file = project_dir / 'sources' / 'index.yaml'
+        if index_file.exists():
+            with open(index_file, 'r', encoding='utf-8') as f:
+                src_data = yaml.safe_load(f) or {'sources': []}
+                sources = src_data.get('sources', [])
+                if sources:
+                    report_data["Section 2"] = ", ".join([s.get('file_name', '') for s in sources])
+
+        # Load real data for sections
+        personas = list((project_dir / 'personas').glob('*.yaml'))
+        if personas:
+            p_data = yaml.safe_load(open(personas[0], 'r', encoding='utf-8'))
+            report_data["Section 3"] = p_data.get('name', '(データなし)')
+            report_data["Section 4"] = p_data.get('situation', '(データなし)')
+            jobs = p_data.get('jobs', {})
+            report_data["Section 5"] = jobs.get('functional', '(データなし)')
+            report_data["Section 6"] = jobs.get('emotional', '(データなし)')
+            report_data["Section 7"] = jobs.get('social', '(データなし)')
+            report_data["Section 8"] = p_data.get('impediments', '(データなし)')
+            report_data["Section 9"] = f"{p_data.get('current_coping', '(データなし)')} - {p_data.get('dissatisfaction', '(データなし)')}"
+            
+            # Section 15 handling
+            qtv = p_data.get('questions_to_verify', [])
+            report_data["Section 15"] = "\n".join([f"- {q}" for q in qtv]) if qtv else "(データなし)"
+
+        alts = project_dir / 'alternatives' / 'alternatives.yaml'
+        if alts.exists():
+            a_data = yaml.safe_load(open(alts, 'r', encoding='utf-8'))
+            report_data["Section 10"] = ", ".join([x['name'] for x in a_data.get('direct_competition', [])]) or '(データなし)'
+            report_data["Section 11"] = ", ".join([x['name'] for x in a_data.get('indirect_alternatives', [])]) or '(データなし)'
+            report_data["Section 12"] = ", ".join([x['name'] for x in a_data.get('non_consumption', [])]) or '(データなし)'
+
+        # Load learn_results.yaml
+        learn_res = project_dir / 'reports' / 'learn_results.yaml'
+        if learn_res.exists():
+            l_data = yaml.safe_load(open(learn_res, 'r', encoding='utf-8'))
+            cpf = l_data.get('cpf_evaluation', {})
+            report_data["Section 14"] = "CPF評価:\n" + yaml.dump(cpf, allow_unicode=True) + "\nAI補完部分: ペルソナとインタビュー事実との間の推論による補完"
+            
+        interviews = list((project_dir / 'interviews').glob('interview_*.yaml'))
+        quotes = []
+        for iv in interviews:
+            iv_data = yaml.safe_load(open(iv, 'r', encoding='utf-8'))
+            for r in iv_data.get('refutations', []):
+                quotes.append(f"[{iv.stem}.md:L{r.get('line')}] \"{r.get('quote')}\"")
+        if quotes:
+            report_data["Section 13"] = "\n".join(quotes)
+        else:
+            report_data["Section 13"] = "(データなし)"
+
+        # Check for unstarted steps for section 15
+        proj_file = project_dir / 'project.yaml'
+        if proj_file.exists():
+            with open(proj_file, 'r', encoding='utf-8') as f:
+                proj_data = yaml.safe_load(f)
+                unstarted = [k for k, v in proj_data.get('status', {}).items() if v == 'unstarted']
+                if unstarted:
+                    report_data["Section 15"] += "\n未完了ステップ: " + ", ".join(unstarted)
 
         report = "# Final Report\n\n"
+        sections = [
+            "初期アイデア",
+            "入力資料と出典",
+            "対象ペルソナ",
+            "ペルソナが置かれた状況",
+            "機能的ジョブ",
+            "感情的ジョブ",
+            "社会的ジョブ",
+            "阻害要因",
+            "現在の対処方法と不満",
+            "直接競合",
+            "間接代替",
+            "無消費",
+            "インタビューから得た事実と引用",
+            "反証、CPF評価、AI補完部分",
+            "未確認事項と次に確認すべきこと"
+        ]
+        
         for i in range(1, 16):
-            report += f"## Section {i}\n{report_data[f'Section {i}']}\n\n"
+            report += f"## {i}. {sections[i-1]}\n{report_data[f'Section {i}']}\n\n"
             
         atomic_write(project_dir / 'reports' / 'final_report.md', report, project_dir)

@@ -1,0 +1,26 @@
+{
+  "direct_competition": [
+    {
+      "name": "Todoist",
+      "benefits": "Simple",
+      "problems": "Too rigid",
+      "cost_time": "Low"
+    }
+  ],
+  "indirect_alternatives": [
+    {
+      "name": "Excel",
+      "benefits": "Flexible",
+      "problems": "Hard to set up",
+      "cost_time": "High"
+    }
+  ],
+  "non_consumption": [
+    {
+      "name": "Memory",
+      "benefits": "Free",
+      "problems": "Forget things",
+      "cost_time": "Zero"
+    }
+  ]
+}

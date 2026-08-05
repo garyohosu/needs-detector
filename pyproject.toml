@@ -27,3 +27,4 @@ needs-detector = "needs_detector.cli.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/needs_detector"]
+include = ["src/needs_detector/fixtures/**/*.json"]

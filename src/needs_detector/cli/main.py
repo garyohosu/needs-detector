@@ -19,17 +19,22 @@ def main():
 
     draw_parser = subparsers.add_parser('draw')
     draw_parser.add_argument('--provider', default='mock')
+    draw_parser.add_argument('--fixture-key', default=None)
 
     explore_parser = subparsers.add_parser('explore')
     explore_parser.add_argument('--provider', default='mock')
+    explore_parser.add_argument('--fixture-key', default=None)
 
     guide_parser = subparsers.add_parser('interview-guide')
+    guide_parser.add_argument('--provider', default='mock')
+    guide_parser.add_argument('--fixture-key', default=None)
 
     add_int_parser = subparsers.add_parser('add-interview')
     add_int_parser.add_argument('file')
 
     learn_parser = subparsers.add_parser('learn')
     learn_parser.add_argument('--provider', default='mock')
+    learn_parser.add_argument('--fixture-key', default=None)
 
     report_parser = subparsers.add_parser('report')
 
@@ -52,15 +57,15 @@ def main():
     elif args.command == 'add-source':
         ProjectService.add_source(project_dir, args.file)
     elif args.command == 'draw':
-        DrawService.draw(project_dir, args.provider)
+        DrawService.draw(project_dir, args.provider, args.fixture_key)
     elif args.command == 'explore':
-        ExploreService.explore(project_dir, args.provider)
+        ExploreService.explore(project_dir, args.provider, args.fixture_key)
     elif args.command == 'interview-guide':
-        InterviewService.generate_guide(project_dir)
+        InterviewService.generate_guide(project_dir, args.provider, args.fixture_key)
     elif args.command == 'add-interview':
         InterviewService.add_interview(project_dir, args.file)
     elif args.command == 'learn':
-        LearnService.learn(project_dir, args.provider)
+        LearnService.learn(project_dir, args.provider, args.fixture_key)
     elif args.command == 'report':
         ReportService.generate_report(project_dir)
     elif args.command == 'status':

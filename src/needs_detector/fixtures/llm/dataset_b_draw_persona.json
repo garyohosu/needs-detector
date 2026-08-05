@@ -1,0 +1,22 @@
+{
+  "personas": [
+    {
+      "id": "p_b",
+      "name": "採用ペルソナB",
+      "situation": "Recruiting/Retention App Scenario",
+      "jobs": {
+        "functional": "Hire good candidates",
+        "emotional": "Feel confident in hires",
+        "social": "Impress boss with retention"
+      },
+      "impediments": "Candidates drop out",
+      "current_coping": "Manual follow-ups",
+      "dissatisfaction": "Takes too much time",
+      "evidence_type": "evidence",
+      "source_reference": "ref",
+      "questions_to_verify": [
+        "Why do candidates drop out?"
+      ]
+    }
+  ]
+}

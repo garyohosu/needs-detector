@@ -1,0 +1,22 @@
+{
+  "personas": [
+    {
+      "id": "p_a",
+      "name": "タスク管理ペルソナA",
+      "situation": "Task Management App Scenario",
+      "jobs": {
+        "functional": "Manage tasks efficiently",
+        "emotional": "Feel in control",
+        "social": "Look organized to team"
+      },
+      "impediments": "Too many tools",
+      "current_coping": "Using pen and paper",
+      "dissatisfaction": "Loses papers easily",
+      "evidence_type": "evidence",
+      "source_reference": "ref",
+      "questions_to_verify": [
+        "How often do you lose papers?"
+      ]
+    }
+  ]
+}

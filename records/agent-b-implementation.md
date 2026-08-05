@@ -41,3 +41,20 @@
 - Added `tests/unit/test_learn_quotes.py` verifying that `QuoteValidationError` is raised when the quote is not an exact substring and when the line number is out of bounds.
 - Added `tests/unit/test_validation_errors.py` verifying that `MockLLMProvider` correctly raises `JSONDecodeError` for invalid JSON strings, and `pydantic.ValidationError` for incorrect schema shapes or disallowed `evidence_type` values (e.g. `magical_type`).
 - Tested with `py -m pytest`, all 13 tests passing successfully.
+
+
+## 007実装完了
+
+All 20 tests passed successfully. Pytest output:
+============================= test session starts =============================
+20 passed, 40 warnings
+
+
+## 007 Cycle 2 修正完了
+
+1. mock_hash をコードから完全削除しました。
+2. Section 2 (sources/index.yaml) および Section 15 (questions_to_verify, status unstarted) をレポートに正しく反映しました。
+3. 	est_report_content.py に、レポートの意味的差異、引用行番号表記、三軸評価、AI補完の記載が含まれているかの Assertions を追加しました。
+4. CPF評価に CPFEvidenceStructure を導入し、LLMモデルとJSONファイルで各三軸の構造化された証拠のみを参照して評価を行うよう改善しました。
+
+20 tests passed, 40 warnings in pytest.

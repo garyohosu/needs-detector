@@ -20,7 +20,7 @@ def test_quote_validation_error_line_bounds(tmp_path):
     from needs_detector.infra.llm.base import MockLLMProvider, LLMResponse
     original_generate = MockLLMProvider.generate
     
-    def bad_generate(self, prompt_name, context):
+    def bad_generate(self, prompt_name, context, fixture_key=None, project_dir=None):
         import json
         return LLMResponse(
             content=json.dumps({
@@ -55,7 +55,7 @@ def test_quote_validation_error_not_substring(tmp_path):
     from needs_detector.infra.llm.base import MockLLMProvider, LLMResponse
     original_generate = MockLLMProvider.generate
     
-    def bad_generate(self, prompt_name, context):
+    def bad_generate(self, prompt_name, context, fixture_key=None, project_dir=None):
         import json
         return LLMResponse(
             content=json.dumps({
