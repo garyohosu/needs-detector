@@ -69,6 +69,9 @@ needs-detector import-llm-response response-learn-02.json
 - 「最後にその問題へ直面したのはいつか」「実際に何をしたか」「時間・金額・代替品・不満」を聞く。
 - 「このサービスを買うか」「使いたいか」という未来の意思は証拠にしない。
 - `--data-classification real`は実データを扱う場合だけ指定する。
+- `add-interview`は原文を`interviews/raw/<id>.md`へ改変せず保存し、derived YAMLへ`source_file`とSHA-256を記録する。raw原文を後から編集・削除するとdoctorが不整合を検出する。
+- レポートの引用`[interviews/raw/<id>.md:L3]`は、そのrawファイルの指定行を開いて確認する。legacy YAMLは`source_file`なしのwarningとして読み込む。
+- real、synthetic、unknownが混在するプロジェクトは`mixed`となり、実顧客検証済みとは扱わない。
 
 ## 主なコマンド
 
@@ -84,7 +87,7 @@ needs-detector import-llm-response response-learn-02.json
 | `next [--json]` | 次に実行すべき操作を最大3件表示 |
 | `report` | 現在の成果物から最終レポート生成 |
 
-`completed`は工程の実行完了を意味し、販売可能性や市場成立を保証しません。
+`completed`は工程の実行完了を意味し、販売可能性や市場成立を保証しません。`mixed`、`synthetic`、`unknown`はいずれも実顧客検証済み・CPF確立とは表示されません。
 
 ## ディレクトリ構成
 

@@ -1,5 +1,7 @@
 import hashlib
 import json
+import ntpath
+import re
 import shutil
 import json as json_module
 from datetime import datetime, timezone
@@ -66,8 +68,8 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def _validate_quotes(iv_data, refs):
-    lines = iv_data.get('content', '').splitlines()
+def _validate_quotes(iv_data, refs, project_dir=None):
+    lines, _ = _interview_lines(project_dir, iv_data) if project_dir else (iv_data.get('content', '').splitlines(), None)
     for ref in refs:
         line = ref.get('line')
         quote = ref.get('quote', '')
@@ -98,10 +100,11 @@ def _data_classification(project_dir: Path):
         except (OSError, yaml.YAMLError):
             value = 'unknown'
         classes.append(value if value in {'real', 'synthetic'} else 'unknown')
-    if 'real' in classes:
-        return 'real'
-    if classes and all(value == 'synthetic' for value in classes):
-        return 'synthetic'
+    present = set(classes)
+    if len(present) == 1:
+        return next(iter(present))
+    if len(present) > 1:
+        return 'mixed'
     project_file = project_dir / 'project.yaml'
     if project_file.exists():
         with open(project_file, 'r', encoding='utf-8') as f:
@@ -109,6 +112,81 @@ def _data_classification(project_dir: Path):
         if configured in {'real', 'synthetic'}:
             return configured
     return 'unknown'
+
+
+def classification_counts(project_dir: Path):
+    counts = {'real': 0, 'synthetic': 0, 'unknown': 0}
+    for path in sorted((project_dir / 'interviews').glob('interview_*.yaml')):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                value = (yaml.safe_load(f) or {}).get('data_classification', 'unknown')
+        except (OSError, yaml.YAMLError):
+            value = 'unknown'
+        counts[value if value in counts else 'unknown'] += 1
+    if not any(counts.values()):
+        try:
+            with open(project_dir / 'project.yaml', 'r', encoding='utf-8') as f:
+                configured = (yaml.safe_load(f) or {}).get('data_classification', 'unknown')
+            if configured in counts and configured != 'unknown':
+                counts[configured] = 1
+        except (OSError, yaml.YAMLError):
+            pass
+    return counts
+
+
+def _reject_source_name(file_name: str):
+    if not isinstance(file_name, str) or not file_name.strip():
+        raise ValueError('source file_name must be a non-empty string')
+    if ntpath.isabs(file_name) or file_name.startswith(('\\\\', '//')):
+        raise ValueError(f'absolute source path is not allowed: {file_name}')
+    if any(part == '..' for part in Path(file_name).parts):
+        raise ValueError(f'source path traversal is not allowed: {file_name}')
+
+
+def load_source_entries(project_dir: Path):
+    index = project_dir / 'sources' / 'index.yaml'
+    if not index.exists():
+        return []
+    with open(index, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict) or not isinstance(data.get('sources'), list):
+        raise ValueError('sources/index.yaml must contain a sources list')
+    entries = []
+    seen_names = set()
+    seen_ids = set()
+    for entry in data['sources']:
+        if not isinstance(entry, dict):
+            raise ValueError('each source entry must be an object')
+        file_name = entry.get('file_name')
+        _reject_source_name(file_name)
+        source_id = entry.get('id')
+        if file_name in seen_names or source_id in seen_ids:
+            raise ValueError(f'duplicate source entry: {file_name or source_id}')
+        seen_names.add(file_name)
+        if source_id is not None:
+            seen_ids.add(source_id)
+        path = project_dir / 'sources' / file_name
+        if not _inside_project(path, project_dir):
+            raise ValueError(f'source resolves outside project: {file_name}')
+        entries.append((entry, path))
+    return entries
+
+
+def _raw_interview_path(project_dir: Path, interview_data):
+    source_file = interview_data.get('source_file')
+    if not source_file:
+        return None
+    path = project_dir / source_file
+    if not _inside_project(path, project_dir):
+        raise ValueError('interview source_file resolves outside project')
+    return path
+
+
+def _interview_lines(project_dir: Path, interview_data):
+    raw_path = _raw_interview_path(project_dir, interview_data)
+    if raw_path and raw_path.exists():
+        return raw_path.read_text(encoding='utf-8').splitlines(), raw_path
+    return interview_data.get('content', '').splitlines(), None
 
 
 def _mark_mock_demo(project_dir: Path):
@@ -126,7 +204,7 @@ class ProjectService:
     def init_project(target_dir: Path, name: str):
         target_dir = Path(target_dir).resolve()
         target_dir.mkdir(parents=True, exist_ok=True)
-        for name_ in ('sources', 'personas', 'alternatives', 'interviews', 'reports', 'manual_prompts'):
+        for name_ in ('sources', 'personas', 'alternatives', 'interviews', 'interviews/raw', 'reports', 'manual_prompts'):
             (target_dir / name_).mkdir(exist_ok=True)
         data = {'id': 'proj_001', 'name': name, 'status': {
             'step1_draw': 'unstarted', 'step2_explore': 'unstarted',
@@ -148,6 +226,9 @@ class ProjectService:
         src = Path(file_path).resolve()
         dest = project_dir / 'sources' / src.name
         validate_project_path(dest, project_dir)
+        entries = load_source_entries(project_dir)
+        if any(entry.get('file_name') == src.name for entry, _ in entries):
+            raise ValueError(f'source already registered: {src.name}')
         shutil.copy(src, dest)
         index = project_dir / 'sources' / 'index.yaml'
         with open(index, 'r', encoding='utf-8') as f:
@@ -161,7 +242,8 @@ class ProjectService:
     def status(project_dir: Path):
         with open(project_dir / 'project.yaml', 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f) or {}
-        print({'status': data.get('status', {}), 'data_classification': _data_classification(project_dir)})
+        print({'status': data.get('status', {}), 'data_classification': _data_classification(project_dir),
+               'classification_counts': classification_counts(project_dir)})
 
 
 def get_llm_provider(provider: str, project_dir: Path):
@@ -203,9 +285,8 @@ class DrawService:
         source_text = ''
         index = project_dir / 'sources' / 'index.yaml'
         if index.exists():
-            with open(index, 'r', encoding='utf-8') as f:
-                for src in (yaml.safe_load(f) or {}).get('sources', []):
-                    source_text += '\n---\n' + (project_dir / 'sources' / src['file_name']).read_text(encoding='utf-8')
+            for src, source_path in load_source_entries(project_dir):
+                source_text += '\n---\n' + source_path.read_text(encoding='utf-8')
         resp = get_llm_provider(provider, project_dir).generate(
             'draw_persona', f'Idea:\n{idea}\nSources:\n{source_text}', fixture_key, project_dir)
         if provider == 'manual':
@@ -260,17 +341,28 @@ class InterviewService:
 
     @staticmethod
     def add_interview(project_dir: Path, file_path: str, data_classification='unknown'):
-        content = Path(file_path).read_text(encoding='utf-8')
+        raw_bytes = Path(file_path).read_bytes()
+        content = raw_bytes.decode('utf-8')
         found = Anonymizer.scan(content)
         if found:
             print(f'Warning: Personal info detected: {found}')
-        dest = project_dir / 'interviews' / f'interview_{Path(file_path).stem}.yaml'
+        interview_id = Path(file_path).stem
+        dest = project_dir / 'interviews' / f'interview_{interview_id}.yaml'
+        raw_dest = project_dir / 'interviews' / 'raw' / f'{interview_id}.md'
+        if dest.exists() or raw_dest.exists():
+            raise ValueError(f'interview already exists: {interview_id}')
+        if data_classification not in {'real', 'synthetic', 'unknown'}:
+            raise ValueError('data_classification must be real, synthetic, or unknown')
         validate_project_path(dest, project_dir)
+        validate_project_path(raw_dest, project_dir)
+        raw_dest.write_bytes(raw_bytes)
+        source_file = f'interviews/raw/{interview_id}.md'
+        source_hash = hashlib.sha256(raw_bytes).hexdigest()
         with open(dest, 'w', encoding='utf-8') as f:
-            if data_classification not in {'real', 'synthetic', 'unknown'}:
-                raise ValueError('data_classification must be real, synthetic, or unknown')
-            yaml.safe_dump({'content': content, 'refutations': [], 'target': Path(file_path).stem,
-                            'data_classification': data_classification}, f, allow_unicode=True)
+            yaml.safe_dump({'content': content, 'refutations': [], 'target': interview_id,
+                            'data_classification': data_classification,
+                            'source_file': source_file, 'source_sha256': source_hash},
+                           f, allow_unicode=True)
 
 
 class LearnService:
@@ -299,7 +391,7 @@ class LearnService:
             resp = llm.generate('learn_interview', iv_data.get('content', ''), fixture_key, project_dir)
             parsed = json.loads(resp.content)
             InterviewAnalysisResponse(**parsed)
-            _validate_quotes(iv_data, parsed.get('refutations', []))
+            _validate_quotes(iv_data, parsed.get('refutations', []), project_dir)
             iv_data['refutations'] = parsed.get('refutations', [])
             iv_data['cpf_evidence'] = parsed.get('cpf_evidence', {})
             with open(iv, 'w', encoding='utf-8') as f:
@@ -370,7 +462,7 @@ class ImportService:
                     raise ValueError(f'Unknown interview target: {expected_target}')
                 with open(iv_path, 'r', encoding='utf-8') as f:
                     iv_data = yaml.safe_load(f) or {}
-                _validate_quotes(iv_data, content.get('refutations', []))
+                _validate_quotes(iv_data, content.get('refutations', []), project_dir)
                 iv_data['refutations'] = content.get('refutations', [])
                 iv_data['cpf_evidence'] = content.get('cpf_evidence', {})
                 with open(iv_path, 'w', encoding='utf-8') as f:
@@ -443,8 +535,9 @@ class ReportService:
         for path in interviews:
             with open(path, 'r', encoding='utf-8') as f:
                 iv = yaml.safe_load(f) or {}
+            source_path = iv.get('source_file') or f'interviews/{path.name}#content'
             for ref in iv.get('refutations', []):
-                quotes.append(f"[{path.stem}.md:L{ref.get('line')}] \"{ref.get('quote')}\"")
+                quotes.append(f"[{source_path}:L{ref.get('line')}] \"{ref.get('quote')}\"")
         data[13] = '\n'.join(quotes) or '(データなし)'
         learn = project_dir / 'reports' / 'learn_results.yaml'
         if learn.exists():
@@ -471,7 +564,7 @@ class ReportService:
                     '未確認事項と次に確認すべきこと']
         classification = _data_classification(project_dir)
         warning = '' if classification == 'real' else '\n警告: これは機能確認または仮説生成であり、実顧客検証・CPF確立・市場成立を示しません。\n'
-        report = (f'# Final Report\n\nデータ区分: {classification}{warning}\n' +
+        report = (f'# Final Report\n\nデータ区分: {classification}\n分類内訳: {classification_counts(project_dir)}{warning}\n' +
                   ''.join(f'## {i}. {headings[i - 1]}\n{data[i]}\n\n' for i in range(1, 16)))
         atomic_write(project_dir / 'reports' / 'final_report.md', report, project_dir)
 
@@ -517,22 +610,13 @@ class DoctorService:
         source_index = project_dir / 'sources' / 'index.yaml'
         if source_index.exists():
             try:
-                with open(source_index, 'r', encoding='utf-8') as f:
-                    sources = (yaml.safe_load(f) or {}).get('sources', [])
-                missing = []
-                external = []
-                for source in sources:
-                    name = source.get('file_name') if isinstance(source, dict) else None
-                    path = project_dir / str(name) if name else project_dir / '__missing__'
-                    if not _inside_project(path, project_dir):
-                        external.append(str(name))
-                    elif not path.exists():
-                        missing.append(str(name))
-                if missing or external:
-                    check('sources', 'error', f'missing={missing}, external={external}')
+                entries = load_source_entries(project_dir)
+                missing = [str(path) for _, path in entries if not path.exists()]
+                if missing:
+                    check('sources', 'error', f'missing={missing}')
                 else:
-                    check('sources', 'ok', f'{len(sources)}件の資料を確認しました')
-            except (OSError, yaml.YAMLError, AttributeError) as exc:
+                    check('sources', 'ok', f'{len(entries)}件の資料を確認しました')
+            except (OSError, yaml.YAMLError, ValueError) as exc:
                 check('sources', 'error', str(exc))
         else:
             check('sources', 'warning', 'sources/index.yamlがありません')
@@ -560,7 +644,19 @@ class DoctorService:
                     interview = yaml.safe_load(f) or {}
                 if not isinstance(interview.get('content'), str) or not isinstance(interview.get('refutations', []), list):
                     raise ValueError('contentまたはrefutationsが不正です')
-                _validate_quotes(interview, interview.get('refutations', []))
+                raw_path = _raw_interview_path(project_dir, interview)
+                if not raw_path:
+                    check(f'interview:{path.name}', 'warning', 'legacy interview: source_fileがありません')
+                else:
+                    if not raw_path.exists():
+                        raise ValueError(f'raw interview missing: {raw_path}')
+                    raw_bytes = raw_path.read_bytes()
+                    raw = raw_bytes.decode('utf-8')
+                    expected_hash = interview.get('source_sha256')
+                    actual_hash = hashlib.sha256(raw_bytes).hexdigest()
+                    if expected_hash and expected_hash != actual_hash:
+                        raise ValueError('raw interview hash mismatch')
+                _validate_quotes(interview, interview.get('refutations', []), project_dir)
             except (OSError, yaml.YAMLError, ValueError, QuoteValidationError) as exc:
                 check(f'interview:{path.name}', 'error', str(exc))
 
@@ -635,9 +731,32 @@ class DoctorService:
             check('report_freshness', 'warning', '最終レポートが成果物より古い可能性があります')
         else:
             check('report_freshness', 'ok', '最終レポートの時刻を確認しました')
+        if report.exists():
+            citation_errors = []
+            report_text = report.read_text(encoding='utf-8')
+            for source_name, line_text, quote in re.findall(r'\[([^\]]+):L(\d+)\]\s+"([^"]*)"', report_text):
+                if '#content' in source_name:
+                    continue
+                source_path = project_dir / source_name
+                if not _inside_project(source_path, project_dir) or not source_path.exists():
+                    citation_errors.append(f'missing citation source: {source_name}')
+                    continue
+                lines = source_path.read_text(encoding='utf-8').splitlines()
+                line_number = int(line_text)
+                if line_number < 1 or line_number > len(lines) or quote not in lines[line_number - 1]:
+                    citation_errors.append(f'quote mismatch: {source_name}:L{line_text}')
+            if citation_errors:
+                check('report_citations', 'error', '; '.join(citation_errors))
+            else:
+                check('report_citations', 'ok', 'レポート引用のファイル・行・本文を確認しました')
 
-        if _data_classification(project_dir) in {'synthetic', 'unknown'}:
-            check('data_classification', 'warning', '合成データまたは未分類です。実顧客検証ではありません')
+        classification = _data_classification(project_dir)
+        if classification != 'real':
+            check('data_classification', 'warning', f'{classification}: 実顧客検証ではありません')
+        else:
+            check('data_classification', 'ok', 'realインタビューのみですがCPF確立は断定しません')
+        result['data_classification'] = classification
+        result['classification_counts'] = classification_counts(project_dir)
         result['status'] = 'error' if result['errors'] else 'warning' if result['warnings'] else 'ok'
         result['next_actions'] = ['doctorのerrorを修復'] if result['errors'] else []
         return result
@@ -663,7 +782,8 @@ class NextService:
         actions = []
         if diagnosis['errors']:
             actions.append('needs-detector doctor')
-            return {'status': diagnosis['status'], 'data_classification': _data_classification(project_dir), 'actions': actions[:3]}
+            return {'status': diagnosis['status'], 'data_classification': _data_classification(project_dir),
+                    'classification_counts': classification_counts(project_dir), 'actions': actions[:3]}
         project_file = project_dir / 'project.yaml'
         if not project_file.exists():
             return {'status': 'error', 'data_classification': 'unknown', 'actions': ['needs-detector init <name>']}
@@ -671,7 +791,11 @@ class NextService:
             project = yaml.safe_load(f) or {}
         if not (project_dir / 'idea.md').exists():
             actions.append('needs-detector add-idea <file>')
-        if not list((project_dir / 'sources').glob('*.*')):
+        try:
+            source_entries = load_source_entries(project_dir)
+        except (OSError, yaml.YAMLError, ValueError):
+            source_entries = []
+        if not source_entries:
             actions.append('needs-detector add-source <file>')
         jobs = _load_jobs(project_dir)[1]
         for job in jobs:
@@ -697,7 +821,8 @@ class NextService:
             actions.append('needs-detector report')
         if not actions:
             actions = ['新しいインタビューを追加する', '未確認事項を検証する']
-        return {'status': diagnosis['status'], 'data_classification': _data_classification(project_dir), 'actions': actions[:3]}
+        return {'status': diagnosis['status'], 'data_classification': _data_classification(project_dir),
+                'classification_counts': classification_counts(project_dir), 'actions': actions[:3]}
 
     @staticmethod
     def run(project_dir: Path, as_json=False):

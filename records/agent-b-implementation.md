@@ -74,6 +74,13 @@ All 27 tests pass, including E2E and Multi-interview E2E tests.
 Implemented fixes A-F and tested.
 All 28 tests pass.
 
+## 010 source・raw・mixed是正
+
+- source resolverを共通化し、正常add-source後のdoctor、path安全性、index-only nextを修正。
+- raw interviewのバイト保持・SHA-256・実在引用パス・legacy warningを追加。
+- real/synthetic/unknownの混在をmixedとしてstatus/doctor/next/reportで統一。
+- 41テストとwheelインストール後CLI試験に成功。
+
 ## 009 リリース候補対応
 
 - root AGENTS.md、doctor/next、データ区分、README、実パイロットテンプレート、合成デモ、CHANGELOGを追加。

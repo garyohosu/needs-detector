@@ -49,7 +49,18 @@ try:
     ProjectService.init_project(Path('installed-project'), 'installed-project')
     import os
     os.chdir('installed-project')
+    Path('source.md').write_text('installed source', encoding='utf-8')
+    sys.argv = ['needs-detector', 'add-source', 'source.md']
+    if main() != 0:
+        sys.exit(1)
+    Path('interview.md').write_text('line one\\nreal quote\\n', encoding='utf-8')
+    sys.argv = ['needs-detector', 'add-interview', 'interview.md', '--data-classification', 'real']
+    if main() != 0:
+        sys.exit(1)
     sys.argv = ['needs-detector', 'doctor', '--json']
+    if main() != 0:
+        sys.exit(1)
+    sys.argv = ['needs-detector', 'report']
     if main() != 0:
         sys.exit(1)
     sys.argv = ['needs-detector', 'next', '--json']
